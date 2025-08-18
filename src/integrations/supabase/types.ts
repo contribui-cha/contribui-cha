@@ -14,13 +14,243 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cards: {
+        Row: {
+          card_number: number
+          created_at: string
+          event_id: number
+          guest_email: string | null
+          guest_name: string | null
+          id: number
+          revealed_at: string | null
+          status: string
+          unlock_code: string | null
+          value: number | null
+        }
+        Insert: {
+          card_number: number
+          created_at?: string
+          event_id: number
+          guest_email?: string | null
+          guest_name?: string | null
+          id?: number
+          revealed_at?: string | null
+          status?: string
+          unlock_code?: string | null
+          value?: number | null
+        }
+        Update: {
+          card_number?: number
+          created_at?: string
+          event_id?: number
+          guest_email?: string | null
+          guest_name?: string | null
+          id?: number
+          revealed_at?: string | null
+          status?: string
+          unlock_code?: string | null
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cards_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          created_at: string
+          date: string | null
+          description: string | null
+          goal_amount: number | null
+          host_id: string
+          id: number
+          max_value: number
+          min_value: number
+          name: string
+          num_cards: number
+          slug: string
+          theme_color: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string | null
+          description?: string | null
+          goal_amount?: number | null
+          host_id: string
+          id?: number
+          max_value?: number
+          min_value?: number
+          name: string
+          num_cards?: number
+          slug: string
+          theme_color?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string | null
+          description?: string | null
+          goal_amount?: number | null
+          host_id?: string
+          id?: number
+          max_value?: number
+          min_value?: number
+          name?: string
+          num_cards?: number
+          slug?: string
+          theme_color?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          created_at: string
+          event_id: number
+          guest_email: string
+          guest_name: string | null
+          id: number
+          message: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: number
+          guest_email: string
+          guest_name?: string | null
+          id?: number
+          message: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: number
+          guest_email?: string
+          guest_name?: string | null
+          id?: number
+          message?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          card_id: number
+          created_at: string
+          event_id: number
+          guest_email: string
+          id: number
+          paid_at: string | null
+          status: string
+          stripe_session_id: string | null
+        }
+        Insert: {
+          amount: number
+          card_id: number
+          created_at?: string
+          event_id: number
+          guest_email: string
+          id?: number
+          paid_at?: string | null
+          status?: string
+          stripe_session_id?: string | null
+        }
+        Update: {
+          amount?: number
+          card_id?: number
+          created_at?: string
+          event_id?: number
+          guest_email?: string
+          id?: number
+          paid_at?: string | null
+          status?: string
+          stripe_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          address: string | null
+          cpf: string | null
+          created_at: string
+          dob: string | null
+          id: string
+          name: string
+          phone: string | null
+          plan: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          cpf?: string | null
+          created_at?: string
+          dob?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          plan?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          cpf?: string | null
+          created_at?: string
+          dob?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          plan?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_event_cards: {
+        Args: { event_id_param: number; num_cards_param: number }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
