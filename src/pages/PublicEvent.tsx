@@ -124,7 +124,9 @@ const PublicEvent = () => {
       if (error) throw error;
 
       // Redirect to Stripe checkout
-      window.open(data.url, '_blank');
+      if (data.url) {
+        window.location.href = data.url;
+      }
       setSelectedCard(null);
       setGuestInfo({ name: '', email: '', message: '' });
     } catch (error: any) {

@@ -14,7 +14,7 @@ All colors MUST be HSL.
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 246 86% 56%;
+    --primary: 235 65% 62%;
     --primary-foreground: 0 0% 98%;
     --secondary: 210 40% 98%;
     --secondary-foreground: 222.2 84% 4.9%;
@@ -38,7 +38,7 @@ All colors MUST be HSL.
     --sidebar-ring: 217.2 91.2% 59.8%;
     
     /* Gradients - usando o gradiente solicitado pelo usuário */
-    --gradient-primary: linear-gradient(45deg, #2b1055 0%, #4169e1 100%);
+    --gradient-primary: linear-gradient(45deg, rgba(43, 16, 85, 0.3) 0%, rgba(65, 105, 225, 0.3) 100%);
     --gradient-baby: linear-gradient(135deg, #f8c4d1, #c5e4fd);
     
     /* Baby theme colors */

@@ -31,86 +31,143 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { card_id, event_id, amount, guest_name, guest_email } = await req.json();
-    logStep("Request data received", { card_id, event_id, amount });
-
-    // Get event details
-    const { data: event, error: eventError } = await supabaseClient
-      .from('events')
-      .select('*')
-      .eq('id', event_id)
-      .single();
-
-    if (eventError) throw new Error(`Event not found: ${eventError.message}`);
-    logStep("Event found", { eventId: event.id, eventName: event.name });
-
-    // Update card status to reserved
-    const { error: updateError } = await supabaseClient
-      .from('cards')
-      .update({ 
-        status: 'reserved',
-        guest_name: guest_name || 'Anônimo',
-        guest_email: guest_email || 'guest@example.com'
-      })
-      .eq('id', card_id)
-      .eq('status', 'available');
-
-    if (updateError) throw new Error(`Failed to reserve card: ${updateError.message}`);
-    logStep("Card reserved", { cardId: card_id });
+    const requestBody = await req.json();
+    logStep("Request data received", requestBody);
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
-    // Create checkout session
-    const session = await stripe.checkout.sessions.create({
-      customer_email: guest_email || 'guest@example.com',
-      line_items: [
-        {
-          price_data: {
-            currency: "brl",
-            product_data: { 
-              name: `Contribuição - ${event.name}`,
-              description: `Card #${card_id}` 
+    // Handle different types of checkout
+    if (requestBody.type === 'event_creation') {
+      // Event creation payment
+      const { price, event_id } = requestBody;
+      
+      // Create checkout session for event creation
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            price_data: {
+              currency: "brl",
+              product_data: { 
+                name: "Criação de Evento",
+                description: "Pagamento único para criação do evento"
+              },
+              unit_amount: price,
             },
-            unit_amount: amount || event.min_value,
+            quantity: 1,
           },
-          quantity: 1,
-        },
-      ],
-      mode: "payment",
-      success_url: `${req.headers.get("origin")}/events/${event.slug}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get("origin")}/events/${event.slug}`,
-      metadata: {
-        card_id: card_id.toString(),
-        event_id: event_id.toString(),
-        amount: (amount || event.min_value).toString()
-      }
-    });
-
-    logStep("Checkout session created", { sessionId: session.id });
-
-    // Create payment record
-    const { error: paymentError } = await supabaseClient
-      .from('payments')
-      .insert({
-        card_id,
-        event_id,
-        amount: amount || event.min_value,
-        guest_email: guest_email || 'guest@example.com',
-        stripe_session_id: session.id,
-        status: 'pending'
+        ],
+        mode: "payment",
+        success_url: `${req.headers.get("origin")}/dashboard?payment=success`,
+        cancel_url: `${req.headers.get("origin")}/dashboard?payment=cancelled`,
+        metadata: {
+          type: 'event_creation',
+          event_id: event_id.toString()
+        }
       });
 
-    if (paymentError) {
-      logStep("Payment record creation failed", { error: paymentError.message });
-      // Don't throw here, just log - the checkout can still proceed
-    } else {
-      logStep("Payment record created");
-    }
+      logStep("Event creation checkout session created", { sessionId: session.id });
 
-    return new Response(JSON.stringify({ url: session.url }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+      return new Response(JSON.stringify({ url: session.url }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    } else {
+      // Card contribution payment
+      const { card_id, event_id, amount, guest_name, guest_email } = requestBody;
+      
+      // Validate amount is positive
+      if (amount <= 0) {
+        throw new Error("Invalid amount: must be positive");
+      }
+
+      // Get event details
+      const { data: event, error: eventError } = await supabaseClient
+        .from('events')
+        .select('*')
+        .eq('id', event_id)
+        .single();
+
+      if (eventError) throw new Error(`Event not found: ${eventError.message}`);
+      logStep("Event found", { eventId: event.id, eventName: event.name });
+
+      // Get card details first
+      const { data: card, error: cardError } = await supabaseClient
+        .from('cards')
+        .select('*')
+        .eq('id', card_id)
+        .eq('status', 'available')
+        .single();
+
+      if (cardError) throw new Error(`Card not found or not available: ${cardError.message}`);
+      logStep("Card found", { cardId: card_id, cardValue: card.value });
+
+      // Update card status to reserved
+      const { error: updateError } = await supabaseClient
+        .from('cards')
+        .update({ 
+          status: 'reserved',
+          guest_name: guest_name || 'Anônimo',
+          guest_email: guest_email || 'guest@example.com'
+        })
+        .eq('id', card_id)
+        .eq('status', 'available');
+
+      if (updateError) throw new Error(`Failed to reserve card: ${updateError.message}`);
+      logStep("Card reserved", { cardId: card_id });
+
+      // Create checkout session using the card's value
+      const session = await stripe.checkout.sessions.create({
+        customer_email: guest_email || 'guest@example.com',
+        line_items: [
+          {
+            price_data: {
+              currency: "brl",
+              product_data: { 
+                name: `Contribuição - ${event.name}`,
+                description: `Card #${card.card_number}` 
+              },
+              unit_amount: card.value || event.min_value,
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        success_url: `${req.headers.get("origin")}/events/${event.slug}/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${req.headers.get("origin")}/events/${event.slug}`,
+        metadata: {
+          type: 'card_contribution',
+          card_id: card_id.toString(),
+          event_id: event_id.toString(),
+          amount: (card.value || event.min_value).toString()
+        }
+      });
+
+      logStep("Checkout session created", { sessionId: session.id });
+
+      // Create payment record
+      const { error: paymentError } = await supabaseClient
+        .from('payments')
+        .insert({
+          card_id,
+          event_id,
+          amount: card.value || event.min_value,
+          guest_email: guest_email || 'guest@example.com',
+          stripe_session_id: session.id,
+          status: 'pending'
+        });
+
+      if (paymentError) {
+        logStep("Payment record creation failed", { error: paymentError.message });
+        // Don't throw here, just log - the checkout can still proceed
+      } else {
+        logStep("Payment record created");
+      }
+
+      return new Response(JSON.stringify({ url: session.url }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR in create-checkout", { message: errorMessage });

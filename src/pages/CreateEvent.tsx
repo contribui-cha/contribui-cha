@@ -37,29 +37,29 @@ const CreateEvent = () => {
   ];
 
   const generateSlug = (name: string) => {
-    return name
+    const baseSlug = name
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
+    
+    // Add timestamp to make slug unique
+    const timestamp = Date.now();
+    return `${baseSlug}-${timestamp}`;
   };
 
   const getCurrentPlan = () => {
     return plans.find(plan => plan.cards === formData.num_cards) || plans[0];
   };
 
-  const createCheckoutSession = async () => {
+  const createCheckoutSession = async (eventId: number) => {
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
-          priceId: getCurrentPlan().price,
-          eventData: {
-            ...formData,
-            min_value: Math.round(minValue.value * 100),
-            max_value: Math.round(maxValue.value * 100),
-            goal_amount: Math.round(goalAmount.value * 100)
-          }
+          price: getCurrentPlan().price,
+          event_id: eventId,
+          type: 'event_creation'
         }
       });
 
@@ -67,7 +67,7 @@ const CreateEvent = () => {
       
       // Redirect to Stripe Checkout
       if (data.url) {
-        window.open(data.url, '_blank');
+        window.location.href = data.url;
       }
     } catch (error: any) {
       toast({
@@ -118,7 +118,7 @@ const CreateEvent = () => {
       if (cardsError) throw cardsError;
 
       // Proceed to payment
-      await createCheckoutSession();
+      await createCheckoutSession(event.id);
     } catch (error: any) {
       toast({
         title: "Erro ao criar evento",
