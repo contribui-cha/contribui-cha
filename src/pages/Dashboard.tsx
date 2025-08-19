@@ -108,9 +108,9 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-accent/20">
+    <div className="min-h-screen" style={{ background: 'var(--gradient-primary)' }}>
       {/* Header */}
-      <header className="border-b bg-background/80 backdrop-blur">
+      <header className="bg-background/80 backdrop-blur border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Heart className="w-8 h-8 text-primary" />
@@ -260,18 +260,24 @@ const Dashboard = () => {
                         </div>
                         <div>
                           <p className="text-muted-foreground">Link do evento</p>
-                          <p className="font-medium text-primary truncate">
+                          <p 
+                            className="font-medium text-primary truncate cursor-pointer hover:underline"
+                            onClick={() => navigate(`/events/${event.slug}`)}
+                          >
                             /{event.slug}
                           </p>
                         </div>
                       </div>
                       <div className="flex gap-2 mt-4">
-                        <Button variant="outline" size="sm" onClick={() => window.open(`/events/${event.slug}`, '_blank')}>
+                        <Button variant="outline" size="sm" onClick={() => navigate(`/events/${event.slug}`)}>
                           Ver Evento
                         </Button>
-                        <Button variant="outline" size="sm">
-                          <BarChart3 className="w-4 h-4 mr-1" />
-                          Relatórios
+                        <Button variant="outline" size="sm" onClick={() => navigate(`/edit-event/${event.slug}`)}>
+                          Editar
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => navigate('/messages')}>
+                          <MessageSquare className="w-4 h-4 mr-1" />
+                          Mensagens
                         </Button>
                       </div>
                     </CardContent>
@@ -305,7 +311,11 @@ const Dashboard = () => {
                 <CardTitle className="text-lg">Links Úteis</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button variant="ghost" className="w-full justify-start">
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start"
+                  onClick={() => navigate('/messages')}
+                >
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Todas as Mensagens
                 </Button>

@@ -8,23 +8,33 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Gift, Users, DollarSign } from 'lucide-react';
+import { useCurrencyMask } from '@/hooks/useCurrencyMask';
+import { Calendar, Gift, Users, DollarSign, CreditCard } from 'lucide-react';
 
 const CreateEvent = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     date: '',
-    num_cards: 50,
-    min_value: 10,
-    max_value: 100,
-    goal_amount: 5000,
+    num_cards: 30,
     theme_color: '#3B82F6'
   });
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Currency masks
+  const goalAmount = useCurrencyMask(1000);
+  const minValue = useCurrencyMask(10);
+  const maxValue = useCurrencyMask(100);
+
+  // Pricing plans
+  const plans = [
+    { cards: 30, price: 1290, name: 'Básico' },
+    { cards: 50, price: 1690, name: 'Popular' },
+    { cards: 80, price: 2190, name: 'Premium' }
+  ];
 
   const generateSlug = (name: string) => {
     return name
@@ -35,6 +45,39 @@ const CreateEvent = () => {
       .replace(/(^-|-$)/g, '');
   };
 
+  const getCurrentPlan = () => {
+    return plans.find(plan => plan.cards === formData.num_cards) || plans[0];
+  };
+
+  const createCheckoutSession = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: {
+          priceId: getCurrentPlan().price,
+          eventData: {
+            ...formData,
+            min_value: Math.round(minValue.value * 100),
+            max_value: Math.round(maxValue.value * 100),
+            goal_amount: Math.round(goalAmount.value * 100)
+          }
+        }
+      });
+
+      if (error) throw error;
+      
+      // Redirect to Stripe Checkout
+      if (data.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro ao processar pagamento",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -43,36 +86,39 @@ const CreateEvent = () => {
     try {
       const slug = generateSlug(formData.name);
       
-      // Create event
+      // Create event with values
       const { data: event, error: eventError } = await supabase
         .from('events')
         .insert({
-          ...formData,
+          name: formData.name,
+          description: formData.description,
+          date: formData.date || null,
           slug,
           host_id: user.id,
-          min_value: formData.min_value * 100, // Convert to cents
-          max_value: formData.max_value * 100,
-          goal_amount: formData.goal_amount * 100
+          num_cards: formData.num_cards,
+          min_value: Math.round(minValue.value * 100),
+          max_value: Math.round(maxValue.value * 100),
+          goal_amount: Math.round(goalAmount.value * 100),
+          theme_color: formData.theme_color
         })
         .select()
         .single();
 
       if (eventError) throw eventError;
 
-      // Generate cards for the event
-      const { error: cardsError } = await supabase.rpc('generate_event_cards', {
+      // Generate cards with random values using the new function
+      const { error: cardsError } = await supabase.rpc('generate_event_cards_with_values', {
         event_id_param: event.id,
-        num_cards_param: formData.num_cards
+        num_cards_param: formData.num_cards,
+        min_value_param: Math.round(minValue.value * 100),
+        max_value_param: Math.round(maxValue.value * 100),
+        goal_amount_param: Math.round(goalAmount.value * 100)
       });
 
       if (cardsError) throw cardsError;
 
-      toast({
-        title: "Evento criado!",
-        description: "Seu evento foi criado com sucesso."
-      });
-
-      navigate(`/events/${slug}`);
+      // Proceed to payment
+      await createCheckoutSession();
     } catch (error: any) {
       toast({
         title: "Erro ao criar evento",
@@ -89,15 +135,53 @@ const CreateEvent = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-baby-pink to-baby-blue p-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-4">
-            <Gift className="w-8 h-8 text-primary-foreground" />
+    <div className="min-h-screen" style={{ background: 'var(--gradient-primary)' }}>
+      <div className="max-w-2xl mx-auto p-4">
+        <div className="text-center mb-8 text-white">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4">
+            <Gift className="w-8 h-8" />
           </div>
-          <h1 className="text-3xl font-bold text-primary mb-2">Criar Novo Evento</h1>
-          <p className="text-muted-foreground">Configure seu chá de bebê ou casa nova</p>
+          <h1 className="text-3xl font-bold mb-2">Criar Novo Evento</h1>
+          <p className="opacity-90">Configure seu chá de bebê ou casa nova</p>
         </div>
+
+        {/* Plans Selection */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Escolha seu Plano
+            </CardTitle>
+            <CardDescription>
+              Cada plano inclui pagamento único para criação do evento
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              {plans.map((plan) => (
+                <Card 
+                  key={plan.cards}
+                  className={`cursor-pointer transition-all ${
+                    formData.num_cards === plan.cards 
+                      ? 'border-primary bg-primary/5' 
+                      : 'hover:border-primary/50'
+                  }`}
+                  onClick={() => handleChange('num_cards', plan.cards)}
+                >
+                  <CardContent className="p-4 text-center">
+                    <h3 className="font-bold text-lg">{plan.name}</h3>
+                    <p className="text-2xl font-bold text-primary">
+                      R$ {(plan.price / 100).toFixed(2).replace('.', ',')}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {plan.cards} cards
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
@@ -144,55 +228,46 @@ const CreateEvent = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="num_cards" className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    Número de Cards
-                  </Label>
-                  <Input
-                    id="num_cards"
-                    type="number"
-                    min="10"
-                    max="200"
-                    value={formData.num_cards}
-                    onChange={(e) => handleChange('num_cards', parseInt(e.target.value))}
-                  />
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="goal_amount" className="flex items-center gap-2">
                     <DollarSign className="w-4 h-4" />
-                    Meta (R$)
+                    Meta Total
                   </Label>
                   <Input
                     id="goal_amount"
-                    type="number"
-                    min="100"
-                    value={formData.goal_amount}
-                    onChange={(e) => handleChange('goal_amount', parseInt(e.target.value))}
+                    value={goalAmount.maskedValue}
+                    onChange={(e) => goalAmount.handleChange(e.target.value)}
+                    placeholder="R$ 1.000,00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Número de Cards</Label>
+                  <Input
+                    value={`${formData.num_cards} cards`}
+                    disabled
+                    className="bg-muted"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="min_value">Valor Mínimo (R$)</Label>
+                  <Label htmlFor="min_value">Valor Mínimo</Label>
                   <Input
                     id="min_value"
-                    type="number"
-                    min="1"
-                    value={formData.min_value}
-                    onChange={(e) => handleChange('min_value', parseInt(e.target.value))}
+                    value={minValue.maskedValue}
+                    onChange={(e) => minValue.handleChange(e.target.value)}
+                    placeholder="R$ 10,00"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="max_value">Valor Máximo (R$)</Label>
+                  <Label htmlFor="max_value">Valor Máximo</Label>
                   <Input
                     id="max_value"
-                    type="number"
-                    min="1"
-                    value={formData.max_value}
-                    onChange={(e) => handleChange('max_value', parseInt(e.target.value))}
+                    value={maxValue.maskedValue}
+                    onChange={(e) => maxValue.handleChange(e.target.value)}
+                    placeholder="R$ 100,00"
                   />
                 </div>
               </div>
@@ -209,7 +284,7 @@ const CreateEvent = () => {
               </div>
 
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Criando Evento...' : 'Criar Evento'}
+                {loading ? 'Processando...' : `Criar Evento - ${(getCurrentPlan().price / 100).toFixed(2).replace('.', ',')} R$`}
               </Button>
             </form>
           </CardContent>

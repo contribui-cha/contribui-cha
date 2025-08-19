@@ -14,7 +14,7 @@ interface Message {
   message: string;
   created_at: string;
   event_id: number;
-  event: {
+  events: {
     name: string;
     slug: string;
   };
@@ -156,9 +156,9 @@ const Messages = () => {
                       <Badge 
                         variant="outline"
                         className="cursor-pointer hover:bg-primary/10"
-                        onClick={() => navigate(`/events/${message.event.slug}`)}
+                        onClick={() => navigate(`/events/${message.events.slug}`)}
                       >
-                        {message.event.name}
+                        {message.events.name}
                       </Badge>
                     </div>
                   </CardHeader>

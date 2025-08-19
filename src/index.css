@@ -10,58 +10,49 @@ All colors MUST be HSL.
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
-
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
-
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-
-    /* Tema para chá de bebê/casa nova - Rosa e azul suaves */
-    --primary: 340 75% 60%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 200 50% 90%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
+    --primary: 246 86% 56%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 210 40% 98%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 98%;
     --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 340 50% 95%;
-    --accent-foreground: 340 75% 35%;
-
+    --accent: 210 40% 98%;
+    --accent-foreground: 222.2 84% 4.9%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 340 75% 60%;
-
-    /* Cores customizadas para o SaaS */
-    --baby-pink: 340 75% 85%;
-    --baby-blue: 200 75% 85%;
-    --success-green: 120 60% 50%;
-    --warning-yellow: 45 90% 65%;
-    --gradient-primary: linear-gradient(135deg, hsl(340 75% 60%), hsl(200 75% 60%));
-    --gradient-card: linear-gradient(135deg, hsl(340 20% 98%), hsl(200 20% 98%));
-
+    --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
-
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Gradients - usando o gradiente solicitado pelo usuário */
+    --gradient-primary: linear-gradient(45deg, #2b1055 0%, #4169e1 100%);
+    --gradient-baby: linear-gradient(135deg, #f8c4d1, #c5e4fd);
+    
+    /* Baby theme colors */
+    --baby-pink: 340 60% 88%;
+    --baby-blue: 200 90% 88%;
+    --baby-yellow: 50 90% 88%;
+    --baby-green: 120 40% 88%;
+    --baby-purple: 270 50% 88%;
+    
+    /* Warm gradient colors */
+    --warm-pink: 340 80% 75%;
+    --warm-coral: 15 85% 75%;
+    --warm-peach: 25 85% 80%;
+    --warm-gold: 45 85% 75%;
   }
 
   .dark {

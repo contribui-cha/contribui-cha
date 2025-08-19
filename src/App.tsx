@@ -8,6 +8,8 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import CreateEvent from "./pages/CreateEvent";
+import EditEvent from "./pages/EditEvent";
+import Messages from "./pages/Messages";
 import PublicEvent from "./pages/PublicEvent";
 import NotFound from "./pages/NotFound";
 
@@ -25,6 +27,8 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/create-event" element={<CreateEvent />} />
+            <Route path="/edit-event/:slug" element={<EditEvent />} />
+            <Route path="/messages" element={<Messages />} />
             <Route path="/events/:slug" element={<PublicEvent />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

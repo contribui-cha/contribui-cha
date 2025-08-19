@@ -251,6 +251,16 @@ export type Database = {
         Args: { event_id_param: number; num_cards_param: number }
         Returns: undefined
       }
+      generate_event_cards_with_values: {
+        Args: {
+          event_id_param: number
+          goal_amount_param: number
+          max_value_param: number
+          min_value_param: number
+          num_cards_param: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
