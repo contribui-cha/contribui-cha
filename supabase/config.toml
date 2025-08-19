@@ -1,1 +1,39 @@
 project_id = "zxxzeiswnzloxukogory"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[auth]
+enabled = true
+port = 54324
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://lovable.dev"]
+jwt_expiry = 3600
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+
+[db]
+port = 54322
+
+[storage]
+enabled = true
+port = 54323
+
+[edge_functions]
+enabled = true
+port = 54325
+
+[functions.create-checkout]
+verify_jwt = false
+
+[analytics]
+enabled = false
+port = 54327
+backend = "postgres"

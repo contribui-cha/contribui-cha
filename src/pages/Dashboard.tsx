@@ -266,7 +266,7 @@ const Dashboard = () => {
                         </div>
                       </div>
                       <div className="flex gap-2 mt-4">
-                        <Button variant="outline" size="sm" onClick={() => navigate(`/event/${event.slug}`)}>
+                        <Button variant="outline" size="sm" onClick={() => window.open(`/events/${event.slug}`, '_blank')}>
                           Ver Evento
                         </Button>
                         <Button variant="outline" size="sm">

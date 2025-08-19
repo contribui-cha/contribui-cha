@@ -4,9 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Heart, Calendar, Target, Gift, Lock, CheckCircle } from 'lucide-react';
+import { Heart, Calendar, Target, Gift, Lock, CheckCircle, User, Mail, MessageSquare } from 'lucide-react';
 
 interface Event {
   id: number;
@@ -33,6 +36,12 @@ const PublicEvent = () => {
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+  const [guestInfo, setGuestInfo] = useState({
+    name: '',
+    email: '',
+    message: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -80,15 +89,35 @@ const PublicEvent = () => {
   };
 
   const handleContribute = async () => {
-    if (!selectedCard || !event) return;
+    if (!selectedCard || !event || !guestInfo.name || !guestInfo.email) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha nome e email",
+        variant: "destructive"
+      });
+      return;
+    }
 
+    setSubmitting(true);
     try {
+      // Save message if provided
+      if (guestInfo.message) {
+        await supabase.from('messages').insert({
+          event_id: event.id,
+          guest_name: guestInfo.name,
+          guest_email: guestInfo.email,
+          message: guestInfo.message
+        });
+      }
+
       // Call Stripe checkout edge function
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
           card_id: selectedCard.id,
           event_id: event.id,
-          amount: selectedCard.value || event.min_value
+          amount: selectedCard.value || event.min_value,
+          guest_name: guestInfo.name,
+          guest_email: guestInfo.email
         }
       });
 
@@ -96,12 +125,16 @@ const PublicEvent = () => {
 
       // Redirect to Stripe checkout
       window.open(data.url, '_blank');
+      setSelectedCard(null);
+      setGuestInfo({ name: '', email: '', message: '' });
     } catch (error: any) {
       toast({
         title: "Erro",
         description: "Erro ao processar pagamento",
         variant: "destructive"
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -246,25 +279,75 @@ const PublicEvent = () => {
         {/* Contribution Modal */}
         {selectedCard && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <Card className="w-full max-w-md">
+            <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
               <CardHeader>
                 <CardTitle>Contribuir - Card #{selectedCard.card_number}</CardTitle>
                 <CardDescription>
-                  Confirme sua contribuição para este evento
+                  Preencha seus dados para contribuir
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Valor sugerido</p>
+                <div className="text-center mb-4">
+                  <p className="text-sm text-muted-foreground">Valor da contribuição</p>
                   <p className="text-2xl font-bold">
                     R$ {((selectedCard.value || event.min_value) / 100).toFixed(2)}
                   </p>
                 </div>
-                <div className="flex gap-2">
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="guest-name" className="flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      Nome completo *
+                    </Label>
+                    <Input
+                      id="guest-name"
+                      value={guestInfo.name}
+                      onChange={(e) => setGuestInfo(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="Seu nome completo"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="guest-email" className="flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      Email *
+                    </Label>
+                    <Input
+                      id="guest-email"
+                      type="email"
+                      value={guestInfo.email}
+                      onChange={(e) => setGuestInfo(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder="seu@email.com"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="guest-message" className="flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4" />
+                      Mensagem carinhosa (opcional)
+                    </Label>
+                    <Textarea
+                      id="guest-message"
+                      value={guestInfo.message}
+                      onChange={(e) => setGuestInfo(prev => ({ ...prev, message: e.target.value }))}
+                      placeholder="Deixe uma mensagem especial..."
+                      className="min-h-[80px]"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-4">
                   <Button 
                     variant="outline" 
-                    onClick={() => setSelectedCard(null)}
+                    onClick={() => {
+                      setSelectedCard(null);
+                      setGuestInfo({ name: '', email: '', message: '' });
+                    }}
                     className="flex-1"
+                    disabled={submitting}
                   >
                     Cancelar
                   </Button>
@@ -272,8 +355,9 @@ const PublicEvent = () => {
                     onClick={handleContribute}
                     className="flex-1"
                     style={{ backgroundColor: event.theme_color }}
+                    disabled={submitting || !guestInfo.name || !guestInfo.email}
                   >
-                    Contribuir
+                    {submitting ? 'Processando...' : 'Contribuir'}
                   </Button>
                 </div>
               </CardContent>
