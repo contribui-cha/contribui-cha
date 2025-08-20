@@ -65,7 +65,7 @@ serve(async (req) => {
             const { error: paymentUpdateError } = await supabaseClient
               .from('payments')
               .update({ 
-                status: 'paid',
+                status: 'completed',
                 paid_at: new Date().toISOString()
               })
               .eq('id', payment.id);

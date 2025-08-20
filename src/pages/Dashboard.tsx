@@ -115,7 +115,7 @@ const Dashboard = () => {
         .from('payments')
         .select('amount')
         .in('event_id', eventIds)
-        .eq('status', 'paid');
+        .eq('status', 'completed');
 
       if (paymentsError) throw paymentsError;
 
