@@ -98,9 +98,6 @@ const EditEvent = () => {
           name: formData.name,
           description: formData.description,
           date: formData.date || null,
-          goal_amount: Math.round(goalAmount.value * 100),
-          min_value: Math.round(minValue.value * 100),
-          max_value: Math.round(maxValue.value * 100),
           theme_color: formData.theme_color
         })
         .eq('id', event.id);
@@ -215,33 +212,34 @@ const EditEvent = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="goal_amount">Meta Total</Label>
+                  <Label htmlFor="goal_amount">Meta Total (Não editável)</Label>
                   <Input
                     id="goal_amount"
                     value={goalAmount.maskedValue}
-                    onChange={(e) => goalAmount.handleChange(e.target.value)}
-                    placeholder="R$ 5.000,00"
+                    disabled
+                    className="bg-muted"
                   />
+                  <p className="text-xs text-muted-foreground">Valores financeiros não podem ser alterados após a criação</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="min_value">Valor Mínimo</Label>
+                  <Label htmlFor="min_value">Valor Mínimo (Não editável)</Label>
                   <Input
                     id="min_value"
                     value={minValue.maskedValue}
-                    onChange={(e) => minValue.handleChange(e.target.value)}
-                    placeholder="R$ 10,00"
+                    disabled
+                    className="bg-muted"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="max_value">Valor Máximo</Label>
+                  <Label htmlFor="max_value">Valor Máximo (Não editável)</Label>
                   <Input
                     id="max_value"
                     value={maxValue.maskedValue}
-                    onChange={(e) => maxValue.handleChange(e.target.value)}
-                    placeholder="R$ 100,00"
+                    disabled
+                    className="bg-muted"
                   />
                 </div>
               </div>
