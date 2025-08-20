@@ -83,8 +83,15 @@ const Guests = () => {
       if (eventsError) throw eventsError;
       setEvents(eventsData || []);
 
-      // Fetch guests - temporarily disabled until types are updated
-      setGuests([]);
+      // Fetch guests
+      const { data: guestsData, error: guestsError } = await supabase
+        .from('guests')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
+
+      if (guestsError) throw guestsError;
+      setGuests(guestsData || []);
 
     } catch (error: any) {
       console.error('Error fetching data:', error);
@@ -110,8 +117,15 @@ const Guests = () => {
     }
 
     try {
-      // Temporarily disabled - functionality will be added after types are updated
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { error } = await supabase
+        .from('guests')
+        .insert({
+          user_id: user?.id,
+          name: newGuest.name,
+          email: newGuest.email,
+          phone: newGuest.phone || null,
+          event_id: newGuest.event_id ? parseInt(newGuest.event_id) : null
+        });
 
       toast({
         title: "Convidado adicionado!",
@@ -132,8 +146,13 @@ const Guests = () => {
 
   const handleDeleteGuest = async (id: number) => {
     try {
-      // Temporarily disabled - functionality will be added after types are updated
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const { error } = await supabase
+        .from('guests')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
 
       toast({
         title: "Convidado removido",

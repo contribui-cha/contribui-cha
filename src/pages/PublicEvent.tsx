@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Heart, Calendar, Target, Gift, Lock, CheckCircle, User, Mail, MessageSquare } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Heart, Calendar, Target, Gift, Lock, CheckCircle, User, Mail, MessageSquare, ArrowLeft } from 'lucide-react';
 
 interface Event {
   id: number;
@@ -20,6 +21,7 @@ interface Event {
   theme_color: string;
   min_value: number;
   max_value: number;
+  host_id: string;
 }
 
 interface Card {
@@ -32,6 +34,8 @@ interface Card {
 
 const PublicEvent = () => {
   const { slug } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [event, setEvent] = useState<Event | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,6 +91,8 @@ const PublicEvent = () => {
       setSelectedCard(card);
     }
   };
+
+  const isEventHost = user && event && user.id === event.host_id;
 
   const handleContribute = async () => {
     if (!selectedCard || !event || !guestInfo.name || !guestInfo.email) {
@@ -178,6 +184,20 @@ const PublicEvent = () => {
       }}
     >
       <div className="max-w-6xl mx-auto">
+        {/* Back Button for Event Host */}
+        {isEventHost && (
+          <div className="mb-4">
+            <Button 
+              variant="ghost" 
+              className="text-white hover:bg-white/10"
+              onClick={() => navigate('/dashboard')}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar ao Dashboard
+            </Button>
+          </div>
+        )}
+        
         {/* Event Header */}
         <div className="text-center mb-8">
           <div 
@@ -248,13 +268,20 @@ const PublicEvent = () => {
                     ${card.status === 'available' 
                       ? 'border-primary bg-primary/10 hover:bg-primary/20 cursor-pointer hover:scale-105' 
                       : card.status === 'reserved'
-                      ? 'border-yellow-500 bg-yellow-100 cursor-not-allowed'
-                      : 'border-green-500 bg-green-100 cursor-not-allowed'
+                      ? 'border-red-500 bg-red-100 cursor-not-allowed'
+                      : 'border-orange-500 bg-orange-100 cursor-not-allowed'
                     }
                   `}
                   disabled={card.status !== 'available'}
                 >
-                  {card.status === 'available' && card.card_number}
+                  {card.status === 'available' && (
+                    isEventHost ? (
+                      <div className="text-center">
+                        <div>{card.card_number}</div>
+                        <div className="text-xs">R$ {(card.value / 100).toFixed(2)}</div>
+                      </div>
+                    ) : card.card_number
+                  )}
                   {card.status === 'reserved' && <Lock className="w-4 h-4" />}
                   {card.status === 'revealed' && <CheckCircle className="w-4 h-4" />}
                 </button>
@@ -267,11 +294,11 @@ const PublicEvent = () => {
                 <span className="text-sm">Disponível</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-yellow-100 border-2 border-yellow-500 rounded"></div>
+                <div className="w-4 h-4 bg-red-100 border-2 border-red-500 rounded"></div>
                 <span className="text-sm">Reservado</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-green-100 border-2 border-green-500 rounded"></div>
+                <div className="w-4 h-4 bg-orange-100 border-2 border-orange-500 rounded"></div>
                 <span className="text-sm">Revelado</span>
               </div>
             </div>

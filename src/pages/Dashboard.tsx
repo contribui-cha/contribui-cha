@@ -41,6 +41,11 @@ const Dashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalRaised: 0,
+    totalContributions: 0,
+    totalMessages: 0
+  });
 
   useEffect(() => {
     if (!user) {
@@ -50,6 +55,7 @@ const Dashboard = () => {
     
     fetchProfile();
     fetchEvents();
+    fetchStats();
   }, [user, navigate]);
 
   const fetchProfile = async () => {
@@ -81,6 +87,66 @@ const Dashboard = () => {
       console.error('Error fetching events:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      // Get all user's events
+      const { data: userEvents, error: eventsError } = await supabase
+        .from('events')
+        .select('id')
+        .eq('host_id', user?.id);
+
+      if (eventsError) throw eventsError;
+      
+      const eventIds = userEvents?.map(e => e.id) || [];
+      
+      if (eventIds.length === 0) {
+        setStats({ totalRaised: 0, totalContributions: 0, totalMessages: 0 });
+        return;
+      }
+
+      // Get total raised from payments
+      const { data: payments, error: paymentsError } = await supabase
+        .from('payments')
+        .select('amount')
+        .in('event_id', eventIds)
+        .eq('status', 'paid');
+
+      if (paymentsError) throw paymentsError;
+
+      const totalRaised = payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0;
+
+      // Get total contributions (revealed cards)
+      const { data: revealedCards, error: cardsError } = await supabase
+        .from('cards')
+        .select('id')
+        .in('event_id', eventIds)
+        .eq('status', 'revealed');
+
+      if (cardsError) throw cardsError;
+
+      const totalContributions = revealedCards?.length || 0;
+
+      // Get total messages
+      const { data: messages, error: messagesError } = await supabase
+        .from('messages')
+        .select('id')
+        .in('event_id', eventIds);
+
+      if (messagesError) throw messagesError;
+
+      const totalMessages = messages?.length || 0;
+
+      setStats({
+        totalRaised,
+        totalContributions,
+        totalMessages
+      });
+
+    } catch (error) {
+      console.error('Error fetching stats:', error);
     }
   };
 
@@ -163,7 +229,7 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Arrecadado</p>
-                  <p className="text-2xl font-bold">R$ 0,00</p>
+                  <p className="text-2xl font-bold">{formatCurrency(stats.totalRaised)}</p>
                 </div>
               </div>
             </CardContent>
@@ -177,7 +243,7 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Contribuições</p>
-                  <p className="text-2xl font-bold">0</p>
+                  <p className="text-2xl font-bold">{stats.totalContributions}</p>
                 </div>
               </div>
             </CardContent>
@@ -191,7 +257,7 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Mensagens</p>
-                  <p className="text-2xl font-bold">0</p>
+                  <p className="text-2xl font-bold">{stats.totalMessages}</p>
                 </div>
               </div>
             </CardContent>
