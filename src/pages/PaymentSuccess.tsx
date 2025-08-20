@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, Gift } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const PaymentSuccess = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [processing, setProcessing] = useState(true);
 
   useEffect(() => {
@@ -108,13 +110,15 @@ const PaymentSuccess = () => {
               >
                 Voltar ao Evento
               </Button>
-              <Button 
-                onClick={() => navigate('/dashboard')}
-                className="flex-1"
-                disabled={processing}
-              >
-                Ir ao Dashboard
-              </Button>
+              {user && (
+                <Button 
+                  onClick={() => navigate('/dashboard')}
+                  className="flex-1"
+                  disabled={processing}
+                >
+                  Ir ao Dashboard
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

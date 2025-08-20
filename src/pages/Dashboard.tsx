@@ -92,6 +92,9 @@ const Dashboard = () => {
 
   const fetchStats = async () => {
     try {
+      // Trigger auto sync before fetching stats
+      await supabase.functions.invoke('sync-payments-auto');
+      
       // Get all user's events
       const { data: userEvents, error: eventsError } = await supabase
         .from('events')

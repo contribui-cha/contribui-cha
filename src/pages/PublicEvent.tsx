@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -40,6 +41,9 @@ const PublicEvent = () => {
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [pendingCard, setPendingCard] = useState<Card | null>(null);
+  const [revealedCard, setRevealedCard] = useState<Card | null>(null);
   const [guestInfo, setGuestInfo] = useState({
     name: '',
     email: '',
@@ -51,6 +55,13 @@ const PublicEvent = () => {
   useEffect(() => {
     if (slug) {
       fetchEventData();
+      // Check for existing revealed card in localStorage
+      const storageKey = `revealed_card_${slug}`;
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const cardData = JSON.parse(stored);
+        setRevealedCard(cardData);
+      }
     }
   }, [slug]);
 
@@ -87,9 +98,42 @@ const PublicEvent = () => {
   };
 
   const handleCardClick = (card: Card) => {
-    if (card.status === 'available') {
-      setSelectedCard(card);
+    // If user is not event host and already has a revealed card, prevent clicking
+    if (!isEventHost && revealedCard) {
+      toast({
+        title: "Card já revelado",
+        description: "Você já revelou um card para este evento.",
+        variant: "destructive"
+      });
+      return;
     }
+
+    // If card is available and user hasn't revealed any card yet
+    if (card.status === 'available' && (!revealedCard || isEventHost)) {
+      setPendingCard(card);
+      setShowConfirmation(true);
+    }
+  };
+
+  const handleConfirmReveal = () => {
+    if (pendingCard) {
+      setSelectedCard(pendingCard);
+      setRevealedCard(pendingCard);
+      
+      // Store in localStorage (only for non-hosts)
+      if (!isEventHost && slug) {
+        const storageKey = `revealed_card_${slug}`;
+        localStorage.setItem(storageKey, JSON.stringify(pendingCard));
+      }
+      
+      setShowConfirmation(false);
+      setPendingCard(null);
+    }
+  };
+
+  const handleCancelReveal = () => {
+    setShowConfirmation(false);
+    setPendingCard(null);
   };
 
   const isEventHost = user && event && user.id === event.host_id;
@@ -260,19 +304,21 @@ const PublicEvent = () => {
           <CardContent>
             <div className="grid grid-cols-5 md:grid-cols-10 lg:grid-cols-15 gap-2">
               {cards.map((card) => (
-                <button
+                 <button
                   key={card.id}
                   onClick={() => handleCardClick(card)}
                   className={`
                     aspect-square rounded-lg border-2 transition-all duration-200 flex items-center justify-center font-bold text-sm
-                    ${card.status === 'available' 
+                    ${card.status === 'available' && (!revealedCard || isEventHost)
                       ? 'border-primary bg-primary/10 hover:bg-primary/20 cursor-pointer hover:scale-105' 
                       : card.status === 'reserved'
                       ? 'border-red-500 bg-red-100 cursor-not-allowed'
-                      : 'border-orange-500 bg-orange-100 cursor-not-allowed'
+                      : card.status === 'revealed'
+                      ? 'border-orange-500 bg-orange-100 cursor-not-allowed'
+                      : 'border-muted bg-muted/20 cursor-not-allowed opacity-50'
                     }
                   `}
-                  disabled={card.status !== 'available'}
+                  disabled={card.status !== 'available' || (!isEventHost && revealedCard && revealedCard.id !== card.id)}
                 >
                   {card.status === 'available' && (
                     isEventHost ? (
@@ -304,6 +350,22 @@ const PublicEvent = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Confirmation Dialog */}
+        <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar revelação do card</AlertDialogTitle>
+              <AlertDialogDescription>
+                Você deseja revelar o card #{pendingCard?.card_number}? Uma vez revelado, você não poderá escolher outro card para este evento.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={handleCancelReveal}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmReveal}>Sim, revelar</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Contribution Modal */}
         {selectedCard && (
