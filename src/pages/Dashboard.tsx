@@ -183,7 +183,7 @@ const Dashboard = () => {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Heart className="w-8 h-8 text-primary" />
-            <h1 className="text-2xl font-bold text-primary">ContribuiChá</h1>
+            <h1 className="text-2xl font-bold text-primary">Contribui&Chá</h1>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
