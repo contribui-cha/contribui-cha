@@ -294,7 +294,7 @@ const Guests = () => {
                         <SelectValue placeholder="Selecione um evento" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Todos os eventos</SelectItem>
+                        <SelectItem value="all">Todos os eventos</SelectItem>
                         {events.map((event) => (
                           <SelectItem key={event.id} value={event.id.toString()}>
                             {event.name}
