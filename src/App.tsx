@@ -10,6 +10,8 @@ import Dashboard from "./pages/Dashboard";
 import CreateEvent from "./pages/CreateEvent";
 import EditEvent from "./pages/EditEvent";
 import Messages from "./pages/Messages";
+import Guests from "./pages/Guests";
+import Reports from "./pages/Reports";
 import PublicEvent from "./pages/PublicEvent";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import NotFound from "./pages/NotFound";
@@ -30,6 +32,8 @@ const App = () => (
             <Route path="/create-event" element={<CreateEvent />} />
             <Route path="/edit-event/:slug" element={<EditEvent />} />
             <Route path="/messages" element={<Messages />} />
+            <Route path="/guests" element={<Guests />} />
+            <Route path="/reports" element={<Reports />} />
             <Route path="/events/:slug" element={<PublicEvent />} />
             <Route path="/events/:slug/success" element={<PaymentSuccess />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

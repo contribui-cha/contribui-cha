@@ -116,7 +116,7 @@ const Reports = () => {
       const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
         .select('*')
-        .eq('event_id', selectedEvent)
+        .eq('event_id', parseInt(selectedEvent))
         .order('created_at', { ascending: false });
 
       if (paymentsError) throw paymentsError;
@@ -126,7 +126,7 @@ const Reports = () => {
       const { data: cardsData, error: cardsError } = await supabase
         .from('cards')
         .select('*')
-        .eq('event_id', selectedEvent)
+        .eq('event_id', parseInt(selectedEvent))
         .order('card_number');
 
       if (cardsError) throw cardsError;
@@ -136,7 +136,7 @@ const Reports = () => {
       const { data: messagesData, error: messagesError } = await supabase
         .from('messages')
         .select('*')
-        .eq('event_id', selectedEvent)
+        .eq('event_id', parseInt(selectedEvent))
         .order('created_at', { ascending: false });
 
       if (messagesError) throw messagesError;

@@ -319,13 +319,21 @@ const Dashboard = () => {
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Todas as Mensagens
                 </Button>
-                <Button variant="ghost" className="w-full justify-start">
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start"
+                  onClick={() => navigate('/reports')}
+                >
                   <BarChart3 className="w-4 h-4 mr-2" />
                   Relatórios Gerais
                 </Button>
-                <Button variant="ghost" className="w-full justify-start">
-                  <Settings className="w-4 h-4 mr-2" />
-                  Configurações
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start"
+                  onClick={() => navigate('/guests')}
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Gerenciar Convidados
                 </Button>
               </CardContent>
             </Card>
