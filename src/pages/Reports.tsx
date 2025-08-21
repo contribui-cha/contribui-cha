@@ -179,9 +179,8 @@ const Reports = () => {
   const currentEvent = events.find(e => e.id.toString() === selectedEvent);
   
   // Calculations
-  const totalRaised = payments
-    .filter(p => p.status === 'paid')
-    .reduce((sum, p) => sum + p.amount, 0);
+  const completedPayments = payments.filter(p => p.status === 'completed');
+  const totalRaised = completedPayments.reduce((sum, p) => sum + p.amount, 0);
 
   const progressPercentage = currentEvent?.goal_amount 
     ? Math.min((totalRaised / currentEvent.goal_amount) * 100, 100) 
@@ -196,11 +195,11 @@ const Reports = () => {
     : 0;
 
   // Time series data for progress chart
-  const progressData = payments
+  const progressData = completedPayments
     .filter(p => p.paid_at)
     .sort((a, b) => new Date(a.paid_at!).getTime() - new Date(b.paid_at!).getTime())
     .reduce((acc, payment, index) => {
-      const runningTotal = payments
+      const runningTotal = completedPayments
         .slice(0, index + 1)
         .filter(p => p.paid_at && new Date(p.paid_at) <= new Date(payment.paid_at!))
         .reduce((sum, p) => sum + p.amount, 0);
@@ -213,8 +212,7 @@ const Reports = () => {
     }, [] as Array<{ date: string; amount: number }>);
 
   // Top donors
-  const topDonors = payments
-    .filter(p => p.status === 'paid')
+  const topDonors = completedPayments
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 5);
 
@@ -492,9 +490,9 @@ const Reports = () => {
                         <li>• {messages.length} mensagens carinhosas foram deixadas</li>
                       </>
                     )}
-                    <li>• {payments.filter(p => p.status === 'paid').length} pessoas contribuíram até agora</li>
-                    {payments.filter(p => p.status === 'paid').length > 0 && (
-                      <li>• Valor médio por contribuição: {formatCurrency(totalRaised / payments.filter(p => p.status === 'paid').length)}</li>
+                    <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{completedPayments.length} pessoas concluíram até agora</p>
+                    {completedPayments.length > 0 && (
+                      <li>• Valor médio por contribuição: {formatCurrency(totalRaised / completedPayments.length)}</li>
                     )}
                   </ul>
                 </div>

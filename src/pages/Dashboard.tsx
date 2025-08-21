@@ -16,6 +16,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { PageLoader } from '@/components/PageLoader';
 
 interface Profile {
   name: string;
@@ -166,14 +167,7 @@ const Dashboard = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Carregando...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader message="Carregando dashboard..." />;
   }
 
   return (

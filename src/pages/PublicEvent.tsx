@@ -1,17 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Progress } from '@/components/ui/progress';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { Heart, Calendar, Target, Gift, Lock, CheckCircle, User, Mail, MessageSquare, ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Heart, Gift, Star, Users, Calendar, Target, Lock, CheckCircle, User, Mail, MessageSquare } from 'lucide-react';
+import { PageLoader } from '@/components/PageLoader';
+import { UnlockCodeModal } from '@/components/UnlockCodeModal';
+import { Label } from '@/components/ui/label';
 
 interface Event {
   id: number;
@@ -31,6 +49,8 @@ interface Card {
   status: string;
   value: number;
   guest_name: string;
+  unlock_code?: string;
+  guest_email?: string;
 }
 
 const PublicEvent = () => {
@@ -41,8 +61,10 @@ const PublicEvent = () => {
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
-  const [showConfirmation, setShowConfirmation] = useState(false);
   const [pendingCard, setPendingCard] = useState<Card | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [showContributeModal, setShowContributeModal] = useState(false);
   const [revealedCard, setRevealedCard] = useState<Card | null>(null);
   const [guestInfo, setGuestInfo] = useState({
     name: '',
@@ -108,11 +130,55 @@ const PublicEvent = () => {
       return;
     }
 
+    // Check if this card needs unlock code (already reserved by this user)
+    if (card.status === 'reserved' && card.unlock_code && card.guest_email) {
+      const userEmail = prompt('Digite seu email para confirmar:');
+      if (userEmail === card.guest_email) {
+        const code = prompt('Digite o código de 6 dígitos enviado para seu email:');
+        if (code === card.unlock_code) {
+          setSelectedCard(card);
+          setGuestInfo(prev => ({ ...prev, email: card.guest_email || '' }));
+          setShowContributeModal(true);
+          return;
+        } else {
+          toast({
+            title: "Código incorreto",
+            description: "Verifique o código enviado no seu email",
+            variant: "destructive"
+          });
+          return;
+        }
+      } else {
+        toast({
+          title: "Email não confere",
+          description: "Este card foi reservado por outro usuário",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     // If card is available and user hasn't revealed any card yet
     if (card.status === 'available' && (!revealedCard || isEventHost)) {
       setPendingCard(card);
-      setShowConfirmation(true);
+      setShowUnlockModal(true);
     }
+  };
+
+  const handleUnlockSuccess = () => {
+    // Refetch cards to get updated status
+    fetchEventData();
+    setShowUnlockModal(false);
+    setPendingCard(null);
+    
+    // Find the newly reserved card and open contribute modal
+    setTimeout(() => {
+      const updatedCard = cards.find(c => c.id === pendingCard?.id);
+      if (updatedCard?.status === 'reserved') {
+        setSelectedCard(updatedCard);
+        setShowContributeModal(true);
+      }
+    }, 1000);
   };
 
   const handleConfirmReveal = () => {
@@ -126,6 +192,7 @@ const PublicEvent = () => {
         localStorage.setItem(storageKey, JSON.stringify(pendingCard));
       }
       
+      setShowContributeModal(true);
       setShowConfirmation(false);
       setPendingCard(null);
     }
@@ -175,9 +242,11 @@ const PublicEvent = () => {
 
       // Redirect to Stripe checkout
       if (data.url) {
-        window.location.href = data.url;
+        window.open(data.url, '_blank');
       }
+      
       setSelectedCard(null);
+      setShowContributeModal(false);
       setGuestInfo({ name: '', email: '', message: '' });
     } catch (error: any) {
       toast({
@@ -191,14 +260,7 @@ const PublicEvent = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Carregando evento...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader message="Carregando evento..." />;
   }
 
   if (!event) {
@@ -270,13 +332,11 @@ const PublicEvent = () => {
 
         {/* Progress Section */}
         <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-4">
               <Target className="w-5 h-5" />
-              Progresso da Arrecadação
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+              <h3 className="text-lg font-semibold">Progresso da Arrecadação</h3>
+            </div>
             <div className="space-y-4">
               <Progress value={progressPercentage} className="h-3" />
               <div className="flex justify-between text-sm">
@@ -292,17 +352,16 @@ const PublicEvent = () => {
 
         {/* Cards Grid */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-4">
               <Gift className="w-5 h-5" />
-              Escolha seu Card de Contribuição
-            </CardTitle>
-            <CardDescription>
+              <h3 className="text-lg font-semibold">Escolha seu Card de Contribuição</h3>
+            </div>
+            <p className="text-muted-foreground mb-6">
               Clique em um card disponível para contribuir
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-5 md:grid-cols-10 lg:grid-cols-15 gap-2">
+            </p>
+            
+            <div className="grid grid-cols-5 md:grid-cols-10 lg:grid-cols-15 gap-2 mb-6">
               {cards.map((card) => (
                  <button
                   key={card.id}
@@ -312,13 +371,13 @@ const PublicEvent = () => {
                     ${card.status === 'available' && (!revealedCard || isEventHost)
                       ? 'border-primary bg-primary/10 hover:bg-primary/20 cursor-pointer hover:scale-105' 
                       : card.status === 'reserved'
-                      ? 'border-red-500 bg-red-100 cursor-not-allowed'
+                      ? 'border-red-500 bg-red-100 cursor-pointer hover:bg-red-200'
                       : card.status === 'revealed'
                       ? 'border-orange-500 bg-orange-100 cursor-not-allowed'
                       : 'border-muted bg-muted/20 cursor-not-allowed opacity-50'
                     }
                   `}
-                  disabled={card.status !== 'available' || (!isEventHost && revealedCard && revealedCard.id !== card.id)}
+                  disabled={card.status === 'revealed' || (!isEventHost && revealedCard && revealedCard.id !== card.id && card.status !== 'reserved')}
                 >
                   {card.status === 'available' && (
                     isEventHost ? (
@@ -334,7 +393,7 @@ const PublicEvent = () => {
               ))}
             </div>
             
-            <div className="flex justify-center gap-6 mt-6">
+            <div className="flex justify-center gap-6">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-primary/10 border-2 border-primary rounded"></div>
                 <span className="text-sm">Disponível</span>
@@ -350,6 +409,21 @@ const PublicEvent = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Unlock Code Modal */}
+        {pendingCard && (
+          <UnlockCodeModal
+            isOpen={showUnlockModal}
+            onClose={() => {
+              setShowUnlockModal(false);
+              setPendingCard(null);
+            }}
+            onSuccess={handleUnlockSuccess}
+            cardNumber={pendingCard.card_number}
+            eventName={event.name}
+            cardId={pendingCard.id}
+          />
+        )}
 
         {/* Confirmation Dialog */}
         <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
@@ -368,93 +442,93 @@ const PublicEvent = () => {
         </AlertDialog>
 
         {/* Contribution Modal */}
-        {selectedCard && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
-              <CardHeader>
-                <CardTitle>Contribuir - Card #{selectedCard.card_number}</CardTitle>
-                <CardDescription>
-                  Preencha seus dados para contribuir
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-center mb-4">
-                  <p className="text-sm text-muted-foreground">Valor da contribuição</p>
-                  <p className="text-2xl font-bold">
-                    R$ {((selectedCard.value || event.min_value) / 100).toFixed(2)}
-                  </p>
+        <Dialog open={showContributeModal} onOpenChange={setShowContributeModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Contribuir - Card #{selectedCard?.card_number}</DialogTitle>
+              <DialogDescription>
+                Preencha seus dados para contribuir
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="text-center p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm text-muted-foreground">Valor da contribuição</p>
+                <p className="text-2xl font-bold">
+                  R$ {((selectedCard?.value || event.min_value) / 100).toFixed(2)}
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="guest-name" className="flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    Nome completo *
+                  </Label>
+                  <Input
+                    id="guest-name"
+                    value={guestInfo.name}
+                    onChange={(e) => setGuestInfo(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Seu nome completo"
+                    required
+                  />
                 </div>
 
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="guest-name" className="flex items-center gap-2">
-                      <User className="w-4 h-4" />
-                      Nome completo *
-                    </Label>
-                    <Input
-                      id="guest-name"
-                      value={guestInfo.name}
-                      onChange={(e) => setGuestInfo(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="Seu nome completo"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="guest-email" className="flex items-center gap-2">
-                      <Mail className="w-4 h-4" />
-                      Email *
-                    </Label>
-                    <Input
-                      id="guest-email"
-                      type="email"
-                      value={guestInfo.email}
-                      onChange={(e) => setGuestInfo(prev => ({ ...prev, email: e.target.value }))}
-                      placeholder="seu@email.com"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="guest-message" className="flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4" />
-                      Mensagem carinhosa (opcional)
-                    </Label>
-                    <Textarea
-                      id="guest-message"
-                      value={guestInfo.message}
-                      onChange={(e) => setGuestInfo(prev => ({ ...prev, message: e.target.value }))}
-                      placeholder="Deixe uma mensagem especial..."
-                      className="min-h-[80px]"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="guest-email" className="flex items-center gap-2">
+                    <Mail className="w-4 h-4" />
+                    Email *
+                  </Label>
+                  <Input
+                    id="guest-email"
+                    type="email"
+                    value={guestInfo.email}
+                    onChange={(e) => setGuestInfo(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="seu@email.com"
+                    required
+                  />
                 </div>
 
-                <div className="flex gap-2 pt-4">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setSelectedCard(null);
-                      setGuestInfo({ name: '', email: '', message: '' });
-                    }}
-                    className="flex-1"
-                    disabled={submitting}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button 
-                    onClick={handleContribute}
-                    className="flex-1"
-                    style={{ backgroundColor: event.theme_color }}
-                    disabled={submitting || !guestInfo.name || !guestInfo.email}
-                  >
-                    {submitting ? 'Processando...' : 'Contribuir'}
-                  </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="guest-message" className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    Mensagem carinhosa (opcional)
+                  </Label>
+                  <Textarea
+                    id="guest-message"
+                    value={guestInfo.message}
+                    onChange={(e) => setGuestInfo(prev => ({ ...prev, message: e.target.value }))}
+                    placeholder="Deixe uma mensagem especial..."
+                    className="min-h-[80px]"
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setSelectedCard(null);
+                    setShowContributeModal(false);
+                    setGuestInfo({ name: '', email: '', message: '' });
+                  }}
+                  className="flex-1"
+                  disabled={submitting}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={handleContribute}
+                  className="flex-1"
+                  style={{ backgroundColor: event.theme_color }}
+                  disabled={submitting || !guestInfo.name || !guestInfo.email}
+                >
+                  {submitting ? 'Processando...' : 'Contribuir'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
