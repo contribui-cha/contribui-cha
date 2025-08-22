@@ -38,17 +38,16 @@ interface Event {
   date: string;
   goal_amount: number;
   theme_color: string;
-  min_value: number;
-  max_value: number;
-  host_id: string;
+  num_cards: number;
 }
 
 interface Card {
   id: number;
   card_number: number;
   status: string;
-  value: number;
+  value?: number;
   guest_name: string;
+  revealed_at?: string;
   unlock_code?: string;
   guest_email?: string;
 }
@@ -89,25 +88,25 @@ const PublicEvent = () => {
 
   const fetchEventData = async () => {
     try {
-      // Fetch event details
+      // Fetch event details using secure function
       const { data: eventData, error: eventError } = await supabase
-        .from('events')
-        .select('*')
-        .eq('slug', slug)
-        .single();
+        .rpc('get_public_event_by_slug', { _slug: slug });
 
       if (eventError) throw eventError;
-      setEvent(eventData);
+      
+      if (!eventData || eventData.length === 0) {
+        throw new Error('Event not found');
+      }
 
-      // Fetch cards
+      const event = eventData[0];
+      setEvent(event);
+
+      // Fetch cards using secure function
       const { data: cardsData, error: cardsError } = await supabase
-        .from('cards')
-        .select('*')
-        .eq('event_id', eventData.id)
-        .order('card_number');
+        .rpc('get_public_cards_by_event', { _event_id: event.id });
 
       if (cardsError) throw cardsError;
-      setCards(cardsData);
+      setCards(cardsData || []);
     } catch (error: any) {
       toast({
         title: "Erro",
@@ -203,7 +202,8 @@ const PublicEvent = () => {
     setPendingCard(null);
   };
 
-  const isEventHost = user && event && user.id === event.host_id;
+  // For public events, assume user is not the host since we don't expose host_id
+  const isEventHost = false;
 
   const handleContribute = async () => {
     if (!selectedCard || !event || !guestInfo.name || !guestInfo.email) {
@@ -232,7 +232,7 @@ const PublicEvent = () => {
         body: {
           card_id: selectedCard.id,
           event_id: event.id,
-          amount: selectedCard.value || event.min_value,
+          amount: selectedCard.value || 1000, // Default minimum value
           guest_name: guestInfo.name,
           guest_email: guestInfo.email
         }
@@ -379,14 +379,14 @@ const PublicEvent = () => {
                   `}
                   disabled={card.status === 'revealed' || (!isEventHost && revealedCard && revealedCard.id !== card.id && card.status !== 'reserved')}
                 >
-                  {card.status === 'available' && (
-                    isEventHost ? (
-                      <div className="text-center">
-                        <div>{card.card_number}</div>
-                        <div className="text-xs">R$ {(card.value / 100).toFixed(2)}</div>
-                      </div>
-                    ) : card.card_number
-                  )}
+                   {card.status === 'available' && (
+                     <div className="text-center">
+                       <div>{card.card_number}</div>
+                       {card.value && (
+                         <div className="text-xs">R$ {(card.value / 100).toFixed(2)}</div>
+                       )}
+                     </div>
+                   )}
                   {card.status === 'reserved' && <Lock className="w-4 h-4" />}
                   {card.status === 'revealed' && <CheckCircle className="w-4 h-4" />}
                 </button>
@@ -421,7 +421,7 @@ const PublicEvent = () => {
             onSuccess={handleUnlockSuccess}
             cardNumber={pendingCard.card_number}
             eventName={event.name}
-            cardId={pendingCard.id}
+            eventId={event.id}
           />
         )}
 
@@ -454,9 +454,9 @@ const PublicEvent = () => {
             <div className="space-y-4">
               <div className="text-center p-4 bg-muted/50 rounded-lg">
                 <p className="text-sm text-muted-foreground">Valor da contribuição</p>
-                <p className="text-2xl font-bold">
-                  R$ {((selectedCard?.value || event.min_value) / 100).toFixed(2)}
-                </p>
+                 <p className="text-2xl font-bold">
+                   R$ {((selectedCard?.value || 1000) / 100).toFixed(2)}
+                 </p>
               </div>
 
               <div className="space-y-4">

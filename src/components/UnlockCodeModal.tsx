@@ -21,7 +21,7 @@ interface UnlockCodeModalProps {
   onSuccess: () => void;
   cardNumber: number;
   eventName: string;
-  cardId: number;
+  eventId: number;
 }
 
 export const UnlockCodeModal = ({ 
@@ -30,7 +30,7 @@ export const UnlockCodeModal = ({
   onSuccess, 
   cardNumber, 
   eventName,
-  cardId 
+  eventId 
 }: UnlockCodeModalProps) => {
   const [step, setStep] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
@@ -92,42 +92,35 @@ export const UnlockCodeModal = ({
       return;
     }
 
-    if (code !== sentCode) {
-      toast({
-        title: "Código incorreto",
-        description: "Verifique o código enviado no seu email",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setLoading(true);
     try {
-      // Update card with unlock code and email
-      const { error } = await supabase
-        .from('cards')
-        .update({ 
-          status: 'reserved',
-          unlock_code: code,
-          guest_email: email
-        })
-        .eq('id', cardId);
+      // Use secure verification function
+      const { data, error } = await supabase.functions.invoke('verify-unlock-code', {
+        body: {
+          email,
+          eventId: eventId,
+          cardNumber,
+          unlockCode: code
+        }
+      });
 
       if (error) throw error;
 
-      toast({
-        title: "Card desbloqueado!",
-        description: "Agora você pode prosseguir com a contribuição",
-      });
+      if (data.success) {
+        toast({
+          title: "Card desbloqueado!",
+          description: "Agora você pode prosseguir com a contribuição",
+        });
 
-      onSuccess();
-      onClose();
-      
-      // Reset modal state
-      setStep('email');
-      setEmail('');
-      setCode('');
-      setSentCode('');
+        onSuccess();
+        handleClose();
+      } else {
+        toast({
+          title: "Erro",
+          description: data.message || "Código incorreto",
+          variant: "destructive"
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Erro ao desbloquear card",
