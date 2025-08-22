@@ -283,11 +283,52 @@ export type Database = {
         }
         Relationships: []
       }
+      unlock_code_attempts: {
+        Row: {
+          attempts: number | null
+          card_number: number
+          created_at: string | null
+          email: string
+          event_id: number
+          id: string
+          locked_until: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          card_number: number
+          created_at?: string | null
+          email: string
+          event_id: number
+          id?: string
+          locked_until?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          card_number?: number
+          created_at?: string | null
+          email?: string
+          event_id?: number
+          id?: string
+          locked_until?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      check_unlock_rate_limit: {
+        Args: { _card_number: number; _email: string; _event_id: number }
+        Returns: {
+          allowed: boolean
+          attempts_remaining: number
+          locked_until: string
+        }[]
+      }
       generate_event_cards: {
         Args: { event_id_param: number; num_cards_param: number }
         Returns: undefined
@@ -301,6 +342,42 @@ export type Database = {
           num_cards_param: number
         }
         Returns: undefined
+      }
+      get_public_cards_by_event: {
+        Args: { _event_id: number }
+        Returns: {
+          card_number: number
+          guest_name: string
+          id: number
+          revealed_at: string
+          status: string
+        }[]
+      }
+      get_public_event_by_slug: {
+        Args: { _slug: string }
+        Returns: {
+          date: string
+          description: string
+          goal_amount: number
+          id: number
+          name: string
+          num_cards: number
+          theme_color: string
+        }[]
+      }
+      verify_unlock_code_and_reveal: {
+        Args: {
+          _card_number: number
+          _email: string
+          _event_id: number
+          _guest_name?: string
+          _unlock_code: string
+        }
+        Returns: {
+          card_value: number
+          message: string
+          success: boolean
+        }[]
       }
     }
     Enums: {
