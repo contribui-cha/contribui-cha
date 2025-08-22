@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
-import { Twilio } from "npm:twilio@4.19.0";
+import twilio from "npm:twilio@4.19.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -84,7 +84,7 @@ serve(async (req) => {
 
     // Send WhatsApp messages if requested via Twilio
     if (send_whatsapp && Deno.env.get("TWILIO_ACCOUNT_SID") && Deno.env.get("TWILIO_AUTH_TOKEN") && Deno.env.get("TWILIO_WHATSAPP_NUMBER")) {
-      const twilio = new Twilio(
+      const twilioClient = twilio(
         Deno.env.get("TWILIO_ACCOUNT_SID"), 
         Deno.env.get("TWILIO_AUTH_TOKEN")
       );
@@ -97,7 +97,7 @@ serve(async (req) => {
               .replace('{EVENTO}', event.name)
               .replace('{LINK}', `${req.headers.get("origin")}/events/${event.slug}`);
 
-            await twilio.messages.create({
+            await twilioClient.messages.create({
               from: `whatsapp:${Deno.env.get("TWILIO_WHATSAPP_NUMBER")}`,
               to: `whatsapp:${guest.phone}`,
               body: `🎉 ${event.name}\n\nOlá, ${guest.name}!\n\n${personalizedMessage}\n\nAcesse: ${req.headers.get("origin")}/events/${event.slug}\n\nSua contribuição é muito importante! ❤️`
