@@ -122,16 +122,16 @@ const Dashboard = () => {
 
       const totalRaised = payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0;
 
-      // Get total contributions (revealed cards)
-      const { data: revealedCards, error: cardsError } = await supabase
-        .from('cards')
+      // Get total contributions (completed payments, not revealed cards)
+      const { data: completedPaymentsCount, error: paymentsCountError } = await supabase
+        .from('payments')
         .select('id')
         .in('event_id', eventIds)
-        .eq('status', 'revealed');
+        .eq('status', 'completed');
 
-      if (cardsError) throw cardsError;
+      if (paymentsCountError) throw paymentsCountError;
 
-      const totalContributions = revealedCards?.length || 0;
+      const totalContributions = completedPaymentsCount?.length || 0;
 
       // Get total messages
       const { data: messages, error: messagesError } = await supabase

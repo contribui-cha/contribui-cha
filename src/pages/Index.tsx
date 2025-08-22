@@ -13,7 +13,7 @@ const Index = () => {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Heart className="w-8 h-8 text-primary" />
-            <h1 className="text-2xl font-bold text-primary">ContribuiChá</h1>
+            <h1 className="text-2xl font-bold text-primary">Contribui&Chá</h1>
           </div>
           <div className="flex items-center gap-4">
             <Link to="/auth">
@@ -107,7 +107,7 @@ const Index = () => {
         <div className="container mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h3 className="text-3xl font-bold mb-6">Vantagens do ContribuiChá</h3>
+              <h3 className="text-3xl font-bold mb-6">Vantagens do Contribui&Chá</h3>
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-success-green mt-1" />
@@ -180,10 +180,10 @@ const Index = () => {
         <div className="container mx-auto text-center">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Heart className="w-6 h-6 text-primary" />
-            <span className="font-bold text-primary">ContribuiChá</span>
+            <span className="font-bold text-primary">Contribui&Chá</span>
           </div>
           <p className="text-muted-foreground">
-            © 2024 ContribuiChá. Feito com amor para suas celebrações especiais.
+            © 2024 Contribui&Chá. Feito com amor para suas celebrações especiais.
           </p>
         </div>
       </footer>

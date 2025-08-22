@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
+import { Twilio } from "npm:twilio@4.19.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -52,12 +53,12 @@ serve(async (req) => {
             .replace('{LINK}', `${req.headers.get("origin")}/events/${event.slug}`);
 
           await resend.emails.send({
-            from: "ContribuiChá <onboarding@resend.dev>",
+            from: "Contribui&Chá <onboarding@resend.dev>",
             to: [guest.email],
             subject: subject,
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #5865f2;">🎉 ${event.name}</h2>
+            <h2 style="color: #5865f2;">🎉 ${event.name}</h2>
                 <p>Olá, ${guest.name}!</p>
                 <p>${personalizedMessage}</p>
                 <div style="text-align: center; margin: 30px 0;">
@@ -81,12 +82,42 @@ serve(async (req) => {
       }
     }
 
-    // Send WhatsApp messages if requested (placeholder for future implementation)
-    if (send_whatsapp) {
-      // This would require integration with WhatsApp Business API
-      // For now, we'll just log the intent
-      logStep("WhatsApp messages requested", { count: guests.length });
-      whatsappSent = guests.length; // Simulated for now
+    // Send WhatsApp messages if requested via Twilio
+    if (send_whatsapp && Deno.env.get("TWILIO_ACCOUNT_SID") && Deno.env.get("TWILIO_AUTH_TOKEN") && Deno.env.get("TWILIO_WHATSAPP_NUMBER")) {
+      const twilio = new Twilio(
+        Deno.env.get("TWILIO_ACCOUNT_SID"), 
+        Deno.env.get("TWILIO_AUTH_TOKEN")
+      );
+      
+      for (const guest of guests) {
+        if (guest.phone) {
+          try {
+            const personalizedMessage = message
+              .replace('{NOME}', guest.name)
+              .replace('{EVENTO}', event.name)
+              .replace('{LINK}', `${req.headers.get("origin")}/events/${event.slug}`);
+
+            await twilio.messages.create({
+              from: `whatsapp:${Deno.env.get("TWILIO_WHATSAPP_NUMBER")}`,
+              to: `whatsapp:${guest.phone}`,
+              body: `🎉 ${event.name}\n\nOlá, ${guest.name}!\n\n${personalizedMessage}\n\nAcesse: ${req.headers.get("origin")}/events/${event.slug}\n\nSua contribuição é muito importante! ❤️`
+            });
+            
+            whatsappSent++;
+            logStep("WhatsApp sent", { to: guest.phone });
+          } catch (whatsappError) {
+            logStep("WhatsApp error", { to: guest.phone, error: whatsappError.message });
+          }
+        } else {
+          logStep("WhatsApp skipped - no phone number", { guest: guest.name });
+        }
+      }
+    } else if (send_whatsapp) {
+      logStep("WhatsApp requested but not configured", { 
+        hasSid: !!Deno.env.get("TWILIO_ACCOUNT_SID"),
+        hasToken: !!Deno.env.get("TWILIO_AUTH_TOKEN"),
+        hasNumber: !!Deno.env.get("TWILIO_WHATSAPP_NUMBER")
+      });
     }
 
     logStep("Messages sent", { emailsSent, whatsappSent });

@@ -33,6 +33,15 @@ port = 54325
 [functions.create-checkout]
 verify_jwt = false
 
+[functions.send-unlock-code]
+verify_jwt = false
+
+[functions.verify-unlock-code]
+verify_jwt = false
+
+[functions.send-guest-messages]
+verify_jwt = false
+
 [analytics]
 enabled = false
 port = 54327

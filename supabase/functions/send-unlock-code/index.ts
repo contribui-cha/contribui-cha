@@ -42,13 +42,13 @@ serve(async (req) => {
     logStep("Generated unlock code", { code: unlockCode });
 
     const emailResponse = await resend.emails.send({
-      from: "ContribuiChá <onboarding@resend.dev>",
+      from: "Contribui&Chá <onboarding@resend.dev>",
       to: [email],
       subject: `Código de desbloqueio - ${eventName}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #3B82F6; margin: 0;">ContribuiChá</h1>
+            <h1 style="color: #3B82F6; margin: 0;">Contribui&Chá</h1>
           </div>
           
           <div style="background: linear-gradient(135deg, #3B82F6, #1D4ED8); color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 30px;">

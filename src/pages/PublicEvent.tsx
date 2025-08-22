@@ -56,6 +56,7 @@ const PublicEvent = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [event, setEvent] = useState<Event | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +72,7 @@ const PublicEvent = () => {
     message: ''
   });
   const [submitting, setSubmitting] = useState(false);
-  const { toast } = useToast();
+  const [totalRaised, setTotalRaised] = useState(0);
 
   useEffect(() => {
     if (slug) {
@@ -85,6 +86,30 @@ const PublicEvent = () => {
       }
     }
   }, [slug]);
+
+  useEffect(() => {
+    // Calculate total raised when event data is loaded
+    if (event) {
+      fetchTotalRaised();
+    }
+  }, [event]);
+
+  const fetchTotalRaised = async () => {
+    if (!event) return;
+    
+    try {
+      const { data: completedPayments } = await supabase
+        .from('payments')
+        .select('amount')
+        .eq('event_id', event.id)
+        .eq('status', 'completed');
+
+      const total = completedPayments?.reduce((sum, payment) => sum + payment.amount, 0) || 0;
+      setTotalRaised(total);
+    } catch (error) {
+      console.error('Error fetching total raised:', error);
+    }
+  };
 
   const fetchEventData = async () => {
     try {
@@ -274,9 +299,6 @@ const PublicEvent = () => {
     );
   }
 
-  const totalRaised = cards
-    .filter(card => card.status === 'revealed')
-    .reduce((sum, card) => sum + (card.value || 0), 0);
 
   const progressPercentage = event.goal_amount > 0 
     ? Math.min((totalRaised / event.goal_amount) * 100, 100) 
