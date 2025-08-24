@@ -33,6 +33,7 @@ serve(async (req) => {
 
     // Validate request method
     if (req.method !== "POST") {
+      logStep("Invalid method", { method: req.method });
       throw new Error(`Method ${req.method} not allowed`);
     }
 
@@ -40,7 +41,11 @@ serve(async (req) => {
     let requestBody;
     try {
       requestBody = await req.json();
-      logStep("Request body parsed", requestBody);
+      logStep("Request body parsed", { 
+        hasEmail: !!requestBody.email,
+        hasEventName: !!requestBody.eventName,
+        hasCardNumber: !!requestBody.cardNumber
+      });
     } catch (parseError) {
       logStep("Failed to parse request body", { error: parseError.message });
       throw new Error("Invalid JSON in request body");
@@ -72,8 +77,10 @@ serve(async (req) => {
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (!resendApiKey) {
       logStep("RESEND_API_KEY not configured");
-      throw new Error("Email service not configured");
+      throw new Error("Email service not configured - RESEND_API_KEY missing");
     }
+
+    logStep("Resend API key found", { keyLength: resendApiKey.length });
 
     // Generate 6-digit unlock code
     const unlockCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -87,10 +94,10 @@ serve(async (req) => {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #3B82F6; margin: 0;">Contribui&Chá</h1>
+            <h1 style="color: #9E7FFF; margin: 0;">Contribui&Chá</h1>
           </div>
           
-          <div style="background: linear-gradient(135deg, #3B82F6, #1D4ED8); color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 30px;">
+          <div style="background: linear-gradient(135deg, #9E7FFF, #38bdf8); color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 30px;">
             <h2 style="margin: 0 0 10px 0;">Código de Desbloqueio</h2>
             <p style="margin: 0; opacity: 0.9;">Card #${cardNumber} - ${eventName}</p>
           </div>
@@ -122,31 +129,45 @@ serve(async (req) => {
       `,
     };
 
-    logStep("Attempting to send email", { to: email, subject: emailContent.subject });
+    logStep("Email content prepared", { 
+      to: email, 
+      subject: emailContent.subject,
+      htmlLength: emailContent.html.length
+    });
 
     // Send email using Resend
     let emailResponse;
     try {
+      logStep("Attempting to send email via Resend API");
       emailResponse = await resend.emails.send(emailContent);
-      logStep("Email API call completed", { 
-        success: !!emailResponse.data, 
-        messageId: emailResponse.data?.id,
-        error: emailResponse.error 
+      logStep("Resend API response received", { 
+        hasData: !!emailResponse.data,
+        hasError: !!emailResponse.error,
+        dataId: emailResponse.data?.id,
+        errorMessage: emailResponse.error?.message
       });
     } catch (emailError) {
-      logStep("Email sending failed", { error: emailError.message });
-      throw new Error(`Failed to send email: ${emailError.message}`);
+      logStep("Resend API call failed with exception", { 
+        error: emailError.message,
+        name: emailError.name,
+        stack: emailError.stack?.split('\n').slice(0, 3).join('\n')
+      });
+      throw new Error(`Failed to call email API: ${emailError.message}`);
     }
 
     // Check if email was sent successfully
     if (emailResponse.error) {
-      logStep("Email service returned error", emailResponse.error);
-      throw new Error(`Email service error: ${emailResponse.error.message}`);
+      logStep("Email service returned error", { 
+        error: emailResponse.error,
+        message: emailResponse.error.message,
+        name: emailResponse.error.name
+      });
+      throw new Error(`Email service error: ${emailResponse.error.message || 'Unknown email service error'}`);
     }
 
     if (!emailResponse.data) {
-      logStep("No data returned from email service");
-      throw new Error("Email service did not return confirmation");
+      logStep("No data returned from email service", { response: emailResponse });
+      throw new Error("Email service did not return confirmation data");
     }
 
     logStep("Email sent successfully", { 
@@ -175,13 +196,14 @@ serve(async (req) => {
   } catch (error: any) {
     logStep("ERROR in send-unlock-code", { 
       message: error.message, 
-      stack: error.stack?.split('\n').slice(0, 3).join('\n') 
+      name: error.name,
+      stack: error.stack?.split('\n').slice(0, 5).join('\n')
     });
     
     // Return error response
     const errorResponse = { 
       success: false, 
-      error: error.message,
+      error: error.message || 'Unknown error occurred',
       timestamp: new Date().toISOString()
     };
 
