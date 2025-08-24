@@ -151,7 +151,7 @@ const GuestMessaging: React.FC<GuestMessagingProps> = ({ eventId, eventName, gue
                 >
                   <Checkbox
                     checked={selectedGuests.includes(guest.id)}
-                    onChange={() => handleGuestToggle(guest.id)}
+                    onCheckedChange={() => handleGuestToggle(guest.id)}
                   />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{guest.name}</p>
@@ -205,7 +205,7 @@ const GuestMessaging: React.FC<GuestMessagingProps> = ({ eventId, eventName, gue
               <Checkbox
                 id="send-email"
                 checked={sendEmail}
-                onCheckedChange={setSendEmail}
+                onCheckedChange={(checked) => setSendEmail(checked === true)}
               />
               <label htmlFor="send-email" className="flex items-center gap-2 cursor-pointer">
                 <Mail className="w-4 h-4" />
@@ -216,7 +216,7 @@ const GuestMessaging: React.FC<GuestMessagingProps> = ({ eventId, eventName, gue
               <Checkbox
                 id="send-whatsapp"
                 checked={sendWhatsapp}
-                onCheckedChange={setSendWhatsapp}
+                onCheckedChange={(checked) => setSendWhatsapp(checked === true)}
               />
               <label htmlFor="send-whatsapp" className="flex items-center gap-2 cursor-pointer">
                 <MessageSquare className="w-4 h-4" />

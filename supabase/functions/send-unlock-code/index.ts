@@ -88,7 +88,7 @@ serve(async (req) => {
 
     // Prepare email content
     const emailContent = {
-      from: "Contribui&Chá <onboarding@resend.dev>",
+      from: "Contribui&Chá <noreply@contribuicha.com.br>",
       to: [email],
       subject: `Código de desbloqueio - ${eventName}`,
       html: `
