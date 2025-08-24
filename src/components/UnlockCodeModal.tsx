@@ -50,15 +50,27 @@ export const UnlockCodeModal = ({
       return;
     }
 
+    console.log('[DEBUG] Sending unlock code:', { email, eventName, cardNumber });
     setLoading(true);
+    
     try {
       const { data, error } = await supabase.functions.invoke('send-unlock-code', {
-        body: { email, eventName, cardNumber }
+        body: { 
+          email, 
+          eventName, 
+          cardNumber 
+        }
       });
 
-      if (error) throw error;
+      console.log('[DEBUG] Send unlock code response:', { data, error });
 
-      if (data.success) {
+      if (error) {
+        console.error('[DEBUG] Error from send-unlock-code function:', error);
+        throw error;
+      }
+
+      if (data?.success) {
+        console.log('[DEBUG] Code sent successfully');
         setSentCode(data.unlockCode);
         setStep('code');
         setCanResend(false);
@@ -70,11 +82,15 @@ export const UnlockCodeModal = ({
           title: "Código enviado!",
           description: `Um código de 6 dígitos foi enviado para ${email}`,
         });
+      } else {
+        console.error('[DEBUG] Send code failed:', data);
+        throw new Error(data?.error || 'Falha ao enviar código');
       }
     } catch (error: any) {
+      console.error('[DEBUG] Error in handleSendCode:', error);
       toast({
         title: "Erro ao enviar código",
-        description: error.message,
+        description: error.message || 'Erro desconhecido ao enviar código',
         variant: "destructive"
       });
     } finally {
@@ -92,7 +108,9 @@ export const UnlockCodeModal = ({
       return;
     }
 
+    console.log('[DEBUG] Verifying unlock code:', { email, eventId, cardNumber, code });
     setLoading(true);
+    
     try {
       // Use secure verification function
       const { data, error } = await supabase.functions.invoke('verify-unlock-code', {
@@ -104,9 +122,15 @@ export const UnlockCodeModal = ({
         }
       });
 
-      if (error) throw error;
+      console.log('[DEBUG] Verify unlock code response:', { data, error });
 
-      if (data.success) {
+      if (error) {
+        console.error('[DEBUG] Error from verify-unlock-code function:', error);
+        throw error;
+      }
+
+      if (data?.success) {
+        console.log('[DEBUG] Code verified successfully');
         toast({
           title: "Card desbloqueado!",
           description: "Agora você pode prosseguir com a contribuição",
@@ -115,16 +139,18 @@ export const UnlockCodeModal = ({
         onSuccess();
         handleClose();
       } else {
+        console.error('[DEBUG] Verification failed:', data);
         toast({
           title: "Erro",
-          description: data.message || "Código incorreto",
+          description: data?.message || "Código incorreto",
           variant: "destructive"
         });
       }
     } catch (error: any) {
+      console.error('[DEBUG] Error in handleVerifyCode:', error);
       toast({
         title: "Erro ao desbloquear card",
-        description: error.message,
+        description: error.message || 'Erro desconhecido na verificação',
         variant: "destructive"
       });
     } finally {
@@ -133,10 +159,12 @@ export const UnlockCodeModal = ({
   };
 
   const handleClose = () => {
+    console.log('[DEBUG] Closing unlock modal and resetting state');
     setStep('email');
     setEmail('');
     setCode('');
     setSentCode('');
+    setCanResend(true);
     onClose();
   };
 
@@ -167,6 +195,11 @@ export const UnlockCodeModal = ({
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com"
                 disabled={loading}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && email && !loading) {
+                    handleSendCode();
+                  }
+                }}
               />
             </div>
           ) : (
@@ -180,6 +213,11 @@ export const UnlockCodeModal = ({
                 disabled={loading}
                 maxLength={6}
                 className="text-center text-lg tracking-widest font-mono"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && code.length === 6 && !loading) {
+                    handleVerifyCode();
+                  }
+                }}
               />
               {step === 'code' && (
                 <div className="text-center">
@@ -198,6 +236,18 @@ export const UnlockCodeModal = ({
             </div>
           )}
         </div>
+
+        {/* Debug Info - Remove in production */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded p-2 text-xs">
+            <p><strong>Debug:</strong></p>
+            <p>Step: {step}</p>
+            <p>Email: {email}</p>
+            <p>Code: {code}</p>
+            <p>Loading: {loading ? 'Yes' : 'No'}</p>
+            <p>Can Resend: {canResend ? 'Yes' : 'No'}</p>
+          </div>
+        )}
 
         <DialogFooter className="flex gap-2">
           <Button variant="outline" onClick={handleClose} disabled={loading}>

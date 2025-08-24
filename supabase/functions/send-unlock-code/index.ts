@@ -16,32 +16,71 @@ interface UnlockCodeRequest {
 
 // Helper function for logging
 const logStep = (step: string, details?: any) => {
+  const timestamp = new Date().toISOString();
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[SEND-UNLOCK-CODE] ${step}${detailsStr}`);
+  console.log(`[${timestamp}] [SEND-UNLOCK-CODE] ${step}${detailsStr}`);
 };
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
+    logStep("CORS preflight request");
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    logStep("Function started");
+    logStep("Function started", { method: req.method, url: req.url });
 
-    const { email, eventName, cardNumber }: UnlockCodeRequest = await req.json();
+    // Validate request method
+    if (req.method !== "POST") {
+      throw new Error(`Method ${req.method} not allowed`);
+    }
+
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      logStep("Request body parsed", requestBody);
+    } catch (parseError) {
+      logStep("Failed to parse request body", { error: parseError.message });
+      throw new Error("Invalid JSON in request body");
+    }
+
+    const { email, eventName, cardNumber }: UnlockCodeRequest = requestBody;
     
+    // Validate required fields
     if (!email || !eventName || !cardNumber) {
-      throw new Error("Email, event name, and card number are required");
+      const missingFields = [];
+      if (!email) missingFields.push('email');
+      if (!eventName) missingFields.push('eventName');
+      if (!cardNumber) missingFields.push('cardNumber');
+      
+      logStep("Missing required fields", { missingFields });
+      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      logStep("Invalid email format", { email });
+      throw new Error("Invalid email format");
     }
 
     logStep("Request data validated", { email, eventName, cardNumber });
 
+    // Check if Resend API key is configured
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendApiKey) {
+      logStep("RESEND_API_KEY not configured");
+      throw new Error("Email service not configured");
+    }
+
     // Generate 6-digit unlock code
     const unlockCode = Math.floor(100000 + Math.random() * 900000).toString();
-    logStep("Generated unlock code", { code: unlockCode });
+    logStep("Generated unlock code", { codeLength: unlockCode.length });
 
-    const emailResponse = await resend.emails.send({
+    // Prepare email content
+    const emailContent = {
       from: "Contribui&Chá <onboarding@resend.dev>",
       to: [email],
       subject: `Código de desbloqueio - ${eventName}`,
@@ -81,32 +120,79 @@ serve(async (req) => {
           </div>
         </div>
       `,
+    };
+
+    logStep("Attempting to send email", { to: email, subject: emailContent.subject });
+
+    // Send email using Resend
+    let emailResponse;
+    try {
+      emailResponse = await resend.emails.send(emailContent);
+      logStep("Email API call completed", { 
+        success: !!emailResponse.data, 
+        messageId: emailResponse.data?.id,
+        error: emailResponse.error 
+      });
+    } catch (emailError) {
+      logStep("Email sending failed", { error: emailError.message });
+      throw new Error(`Failed to send email: ${emailError.message}`);
+    }
+
+    // Check if email was sent successfully
+    if (emailResponse.error) {
+      logStep("Email service returned error", emailResponse.error);
+      throw new Error(`Email service error: ${emailResponse.error.message}`);
+    }
+
+    if (!emailResponse.data) {
+      logStep("No data returned from email service");
+      throw new Error("Email service did not return confirmation");
+    }
+
+    logStep("Email sent successfully", { 
+      messageId: emailResponse.data.id,
+      to: email 
     });
 
-    logStep("Email sent successfully", { messageId: emailResponse.data?.id });
-
-    return new Response(JSON.stringify({ 
+    // Return success response
+    const successResponse = { 
       success: true, 
       unlockCode: unlockCode,
-      message: "Código enviado com sucesso!" 
-    }), {
+      message: "Código enviado com sucesso!",
+      messageId: emailResponse.data.id
+    };
+
+    logStep("Returning success response", { messageId: emailResponse.data.id });
+
+    return new Response(JSON.stringify(successResponse), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
         ...corsHeaders,
       },
     });
+
   } catch (error: any) {
-    logStep("ERROR in send-unlock-code", { message: error.message });
+    logStep("ERROR in send-unlock-code", { 
+      message: error.message, 
+      stack: error.stack?.split('\n').slice(0, 3).join('\n') 
+    });
     
+    // Return error response
+    const errorResponse = { 
+      success: false, 
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message 
-      }),
+      JSON.stringify(errorResponse),
       {
         status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
+        headers: { 
+          "Content-Type": "application/json", 
+          ...corsHeaders 
+        },
       }
     );
   }

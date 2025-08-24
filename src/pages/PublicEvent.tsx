@@ -113,9 +113,13 @@ const PublicEvent = () => {
 
   const fetchEventData = async () => {
     try {
+      console.log('[DEBUG] Fetching event data for slug:', slug);
+      
       // Fetch event details using secure function
       const { data: eventData, error: eventError } = await supabase
         .rpc('get_public_event_by_slug', { _slug: slug });
+
+      console.log('[DEBUG] Event data response:', { eventData, eventError });
 
       if (eventError) throw eventError;
       
@@ -125,14 +129,18 @@ const PublicEvent = () => {
 
       const event = eventData[0];
       setEvent(event);
+      console.log('[DEBUG] Event set:', event);
 
       // Fetch cards using secure function
       const { data: cardsData, error: cardsError } = await supabase
         .rpc('get_public_cards_by_event', { _event_id: event.id });
 
+      console.log('[DEBUG] Cards data response:', { cardsData, cardsError });
+
       if (cardsError) throw cardsError;
       setCards(cardsData || []);
     } catch (error: any) {
+      console.error('[DEBUG] Error fetching event data:', error);
       toast({
         title: "Erro",
         description: "Evento não encontrado",
@@ -144,8 +152,13 @@ const PublicEvent = () => {
   };
 
   const handleCardClick = (card: Card) => {
+    console.log('[DEBUG] Card clicked:', card);
+    console.log('[DEBUG] Current revealed card:', revealedCard);
+    console.log('[DEBUG] Is event host:', isEventHost);
+
     // If user is not event host and already has a revealed card, prevent clicking
     if (!isEventHost && revealedCard) {
+      console.log('[DEBUG] User already has revealed card, blocking click');
       toast({
         title: "Card já revelado",
         description: "Você já revelou um card para este evento.",
@@ -156,6 +169,7 @@ const PublicEvent = () => {
 
     // Check if this card needs unlock code (already reserved by this user)
     if (card.status === 'reserved' && card.unlock_code && card.guest_email) {
+      console.log('[DEBUG] Card is reserved with unlock code, requesting verification');
       const userEmail = prompt('Digite seu email para confirmar:');
       if (userEmail === card.guest_email) {
         const code = prompt('Digite o código de 6 dígitos enviado para seu email:');
@@ -184,12 +198,17 @@ const PublicEvent = () => {
 
     // If card is available and user hasn't revealed any card yet
     if (card.status === 'available' && (!revealedCard || isEventHost)) {
+      console.log('[DEBUG] Card is available, opening unlock modal');
       setPendingCard(card);
       setShowUnlockModal(true);
+    } else {
+      console.log('[DEBUG] Card click blocked - status:', card.status, 'revealedCard:', !!revealedCard);
     }
   };
 
   const handleUnlockSuccess = () => {
+    console.log('[DEBUG] Unlock success callback triggered');
+    
     // Refetch cards to get updated status
     fetchEventData();
     setShowUnlockModal(false);
@@ -197,12 +216,24 @@ const PublicEvent = () => {
     
     // Find the newly reserved card and open contribute modal
     setTimeout(() => {
-      const updatedCard = cards.find(c => c.id === pendingCard?.id);
-      if (updatedCard?.status === 'reserved') {
-        setSelectedCard(updatedCard);
-        setShowContributeModal(true);
-      }
-    }, 1000);
+      console.log('[DEBUG] Looking for updated card after unlock');
+      fetchEventData().then(() => {
+        // After refetch, find the card that was just unlocked
+        const updatedCards = cards.filter(c => c.id === pendingCard?.id);
+        console.log('[DEBUG] Updated cards after unlock:', updatedCards);
+        
+        if (updatedCards.length > 0 && updatedCards[0].status === 'reserved') {
+          const updatedCard = updatedCards[0];
+          console.log('[DEBUG] Found updated reserved card, opening contribute modal');
+          setSelectedCard(updatedCard);
+          setGuestInfo(prev => ({ 
+            ...prev, 
+            email: updatedCard.guest_email || '' 
+          }));
+          setShowContributeModal(true);
+        }
+      });
+    }, 1500); // Increased timeout to ensure data is updated
   };
 
   const handleConfirmReveal = () => {
@@ -240,10 +271,17 @@ const PublicEvent = () => {
       return;
     }
 
+    console.log('[DEBUG] Starting contribution process:', {
+      card: selectedCard,
+      event: event.id,
+      guestInfo
+    });
+
     setSubmitting(true);
     try {
       // Save message if provided
       if (guestInfo.message) {
+        console.log('[DEBUG] Saving guest message');
         await supabase.from('messages').insert({
           event_id: event.id,
           guest_name: guestInfo.name,
@@ -253,6 +291,7 @@ const PublicEvent = () => {
       }
 
       // Call Stripe checkout edge function
+      console.log('[DEBUG] Calling Stripe checkout function');
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
           card_id: selectedCard.id,
@@ -263,10 +302,13 @@ const PublicEvent = () => {
         }
       });
 
+      console.log('[DEBUG] Stripe checkout response:', { data, error });
+
       if (error) throw error;
 
       // Redirect to Stripe checkout
       if (data.url) {
+        console.log('[DEBUG] Redirecting to Stripe checkout:', data.url);
         window.open(data.url, '_blank');
       }
       
@@ -274,6 +316,7 @@ const PublicEvent = () => {
       setShowContributeModal(false);
       setGuestInfo({ name: '', email: '', message: '' });
     } catch (error: any) {
+      console.error('[DEBUG] Error in contribution process:', error);
       toast({
         title: "Erro",
         description: "Erro ao processar pagamento",
@@ -298,7 +341,6 @@ const PublicEvent = () => {
       </div>
     );
   }
-
 
   const progressPercentage = event.goal_amount > 0 
     ? Math.min((totalRaised / event.goal_amount) * 100, 100) 
@@ -432,11 +474,28 @@ const PublicEvent = () => {
           </CardContent>
         </Card>
 
+        {/* Debug Info - Remove in production */}
+        {process.env.NODE_ENV === 'development' && (
+          <Card className="mt-4 border-yellow-500">
+            <CardContent className="p-4">
+              <h4 className="font-bold text-yellow-600 mb-2">Debug Info</h4>
+              <div className="text-sm space-y-1">
+                <p>Event ID: {event?.id}</p>
+                <p>Cards Count: {cards.length}</p>
+                <p>Revealed Card: {revealedCard ? `#${revealedCard.card_number}` : 'None'}</p>
+                <p>Show Unlock Modal: {showUnlockModal ? 'Yes' : 'No'}</p>
+                <p>Pending Card: {pendingCard ? `#${pendingCard.card_number}` : 'None'}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Unlock Code Modal */}
         {pendingCard && (
           <UnlockCodeModal
             isOpen={showUnlockModal}
             onClose={() => {
+              console.log('[DEBUG] Closing unlock modal');
               setShowUnlockModal(false);
               setPendingCard(null);
             }}
