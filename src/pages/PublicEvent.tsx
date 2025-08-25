@@ -208,32 +208,24 @@ const PublicEvent = () => {
 
   const handleUnlockSuccess = () => {
     console.log('[DEBUG] Unlock success callback triggered');
+    console.log('[DEBUG] Pending card:', pendingCard);
     
-    // Refetch cards to get updated status
-    fetchEventData();
     setShowUnlockModal(false);
-    setPendingCard(null);
     
-    // Find the newly reserved card and open contribute modal
-    setTimeout(() => {
-      console.log('[DEBUG] Looking for updated card after unlock');
-      fetchEventData().then(() => {
-        // After refetch, find the card that was just unlocked
-        const updatedCards = cards.filter(c => c.id === pendingCard?.id);
-        console.log('[DEBUG] Updated cards after unlock:', updatedCards);
-        
-        if (updatedCards.length > 0 && updatedCards[0].status === 'reserved') {
-          const updatedCard = updatedCards[0];
-          console.log('[DEBUG] Found updated reserved card, opening contribute modal');
-          setSelectedCard(updatedCard);
-          setGuestInfo(prev => ({ 
-            ...prev, 
-            email: updatedCard.guest_email || '' 
-          }));
-          setShowContributeModal(true);
-        }
-      });
-    }, 1500); // Increased timeout to ensure data is updated
+    // Immediately open contribute modal with the pending card
+    if (pendingCard) {
+      console.log('[DEBUG] Opening contribute modal with pending card');
+      setSelectedCard(pendingCard);
+      setGuestInfo(prev => ({ 
+        ...prev, 
+        email: '' // User will enter their email in the contribute modal
+      }));
+      setShowContributeModal(true);
+      setPendingCard(null);
+    }
+    
+    // Refetch cards to get updated status in background
+    fetchEventData();
   };
 
   const handleConfirmReveal = () => {
