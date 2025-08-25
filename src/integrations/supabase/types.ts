@@ -22,6 +22,7 @@ export type Database = {
           guest_email: string | null
           guest_name: string | null
           id: number
+          reserved_until: string | null
           revealed_at: string | null
           status: string
           unlock_code: string | null
@@ -34,6 +35,7 @@ export type Database = {
           guest_email?: string | null
           guest_name?: string | null
           id?: number
+          reserved_until?: string | null
           revealed_at?: string | null
           status?: string
           unlock_code?: string | null
@@ -46,6 +48,7 @@ export type Database = {
           guest_email?: string | null
           guest_name?: string | null
           id?: number
+          reserved_until?: string | null
           revealed_at?: string | null
           status?: string
           unlock_code?: string | null
@@ -328,6 +331,10 @@ export type Database = {
           attempts_remaining: number
           locked_until: string
         }[]
+      }
+      cleanup_expired_reservations: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       generate_event_cards: {
         Args: { event_id_param: number; num_cards_param: number }
