@@ -1,4 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { Resend } from "npm:resend@2.0.0";
+
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -70,12 +73,21 @@ serve(async (req) => {
 
     logStep("Request data validated", { email, eventName, cardNumber });
 
+    // Check if Resend API key is configured
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendApiKey) {
+      logStep("RESEND_API_KEY not configured");
+      throw new Error("Email service not configured - RESEND_API_KEY missing");
+    }
+
+    logStep("Resend API key found", { keyLength: resendApiKey.length });
+
     // Generate 6-digit unlock code
     const unlockCode = Math.floor(100000 + Math.random() * 900000).toString();
     logStep("Generated unlock code", { codeLength: unlockCode.length });
 
-    // Prepare email content for Resend integration
-    const emailPayload = {
+    // Prepare email content
+    const emailContent = {
       from: "Contribui&Chá <noreply@contribuicha.com.br>",
       to: [email],
       subject: `Código de desbloqueio - ${eventName}`,
@@ -119,38 +131,20 @@ serve(async (req) => {
 
     logStep("Email content prepared", { 
       to: email, 
-      subject: emailPayload.subject,
-      htmlLength: emailPayload.html.length
+      subject: emailContent.subject,
+      htmlLength: emailContent.html.length
     });
 
-    // Send email using Resend direct integration
+    // Send email using Resend
     let emailResponse;
     try {
-      logStep("Attempting to send email via Resend direct integration");
-      
-      // Use direct Resend integration instead of API key
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(emailPayload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        logStep("Resend API error", { 
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData
-        });
-        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorData}`);
-      }
-
-      emailResponse = await response.json();
+      logStep("Attempting to send email via Resend API");
+      emailResponse = await resend.emails.send(emailContent);
       logStep("Resend API response received", { 
-        hasId: !!emailResponse.id,
-        id: emailResponse.id
+        hasData: !!emailResponse.data,
+        hasError: !!emailResponse.error,
+        dataId: emailResponse.data?.id,
+        errorMessage: emailResponse.error?.message
       });
       
     } catch (emailError) {
@@ -159,17 +153,26 @@ serve(async (req) => {
         name: emailError.name,
         stack: emailError.stack?.split('\n').slice(0, 3).join('\n')
       });
-      throw new Error(`Failed to send email: ${emailError.message}`);
+      throw new Error(`Failed to call email API: ${emailError.message}`);
     }
 
     // Check if email was sent successfully
-    if (!emailResponse.id) {
-      logStep("No ID returned from email service", { response: emailResponse });
-      throw new Error("Email service did not return confirmation ID");
+    if (emailResponse.error) {
+      logStep("Email service returned error", { 
+        error: emailResponse.error,
+        message: emailResponse.error.message,
+        name: emailResponse.error.name
+      });
+      throw new Error(`Email service error: ${emailResponse.error.message || 'Unknown email service error'}`);
+    }
+
+    if (!emailResponse.data) {
+      logStep("No data returned from email service", { response: emailResponse });
+      throw new Error("Email service did not return confirmation data");
     }
 
     logStep("Email sent successfully", { 
-      messageId: emailResponse.id,
+      messageId: emailResponse.data.id,
       to: email 
     });
 
@@ -178,10 +181,10 @@ serve(async (req) => {
       success: true, 
       unlockCode: unlockCode,
       message: "Código enviado com sucesso!",
-      messageId: emailResponse.id
+      messageId: emailResponse.data.id
     };
 
-    logStep("Returning success response", { messageId: emailResponse.id });
+    logStep("Returning success response", { messageId: emailResponse.data.id });
 
     return new Response(JSON.stringify(successResponse), {
       status: 200,
