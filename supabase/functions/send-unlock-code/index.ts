@@ -75,8 +75,17 @@ serve(async (req) => {
 
     // Check if Resend API key is configured
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    logStep("Environment check", { 
+      hasResendKey: !!resendApiKey,
+      keyType: typeof resendApiKey,
+      keyLength: resendApiKey?.length || 0,
+      allEnvKeys: Object.keys(Deno.env.toObject()).filter(key => key.includes('RESEND') || key.includes('API'))
+    });
+    
     if (!resendApiKey) {
-      logStep("RESEND_API_KEY not configured");
+      logStep("RESEND_API_KEY not configured", {
+        availableKeys: Object.keys(Deno.env.toObject()).slice(0, 10) // First 10 keys for debugging
+      });
       throw new Error("Email service not configured - RESEND_API_KEY missing");
     }
 
