@@ -1,8 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -136,6 +134,16 @@ serve(async (req) => {
       subject: emailContent.subject,
       htmlLength: emailContent.html.length
     });
+
+    // Initialize Resend client with validated API key
+    let resend;
+    try {
+      logStep("Initializing Resend client");
+      resend = new Resend(resendApiKey);
+    } catch (initError) {
+      logStep("Failed to initialize Resend client", { error: initError.message });
+      throw new Error(`Failed to initialize email service: ${initError.message}`);
+    }
 
     // Send email using Resend
     let emailResponse;
