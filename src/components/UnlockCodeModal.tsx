@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,8 @@ interface UnlockCodeModalProps {
   cardNumber: number;
   eventName: string;
   eventId: number;
+  cardStatus?: string;
+  reservedEmail?: string;
 }
 
 export const UnlockCodeModal = ({ 
@@ -30,7 +32,9 @@ export const UnlockCodeModal = ({
   onSuccess, 
   cardNumber, 
   eventName,
-  eventId 
+  eventId,
+  cardStatus = 'available',
+  reservedEmail: initialReservedEmail = ''
 }: UnlockCodeModalProps) => {
   const [step, setStep] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
@@ -38,13 +42,30 @@ export const UnlockCodeModal = ({
   const [sentCode, setSentCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [canResend, setCanResend] = useState(true);
+  const [isReservedCard, setIsReservedCard] = useState(cardStatus === 'reserved');
+  const [reservedEmail, setReservedEmail] = useState(initialReservedEmail);
   const { toast } = useToast();
+
+  useEffect(() => {
+    setIsReservedCard(cardStatus === 'reserved');
+    setReservedEmail(initialReservedEmail);
+  }, [cardStatus, initialReservedEmail]);
 
   const handleSendCode = async () => {
     if (!email || !email.includes('@')) {
       toast({
         title: "Email inválido",
         description: "Por favor, digite um email válido",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if card is reserved and email doesn't match
+    if (isReservedCard && reservedEmail && email !== reservedEmail) {
+      toast({
+        title: "Card reservado",
+        description: "Este card está reservado para outro email. Apenas o email que o reservou pode prosseguir.",
         variant: "destructive"
       });
       return;
@@ -178,7 +199,9 @@ export const UnlockCodeModal = ({
           </DialogTitle>
           <DialogDescription>
             {step === 'email' 
-              ? `Para desbloquear o Card #${cardNumber}, precisamos enviar um código de confirmação para seu email.`
+              ? isReservedCard 
+                ? `Este Card #${cardNumber} está reservado${reservedEmail ? ` para ${reservedEmail}` : ''}. Digite o email correto para continuar.`
+                : `Para desbloquear o Card #${cardNumber}, precisamos enviar um código de confirmação para seu email.`
               : `Digite o código de 6 dígitos que enviamos para ${email}.`
             }
           </DialogDescription>

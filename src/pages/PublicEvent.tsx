@@ -424,14 +424,14 @@ const PublicEvent = () => {
                   onClick={() => handleCardClick(card)}
                   className={`
                     aspect-square rounded-lg border-2 transition-all duration-200 flex items-center justify-center font-bold text-sm
-                    ${card.status === 'available' && (!revealedCard || isEventHost)
-                      ? 'border-primary bg-primary/10 hover:bg-primary/20 cursor-pointer hover:scale-105' 
-                      : card.status === 'reserved'
-                      ? 'border-red-500 bg-red-100 cursor-pointer hover:bg-red-200'
-                      : card.status === 'revealed'
-                      ? 'border-orange-500 bg-orange-100 cursor-not-allowed'
-                      : 'border-muted bg-muted/20 cursor-not-allowed opacity-50'
-                    }
+                     ${card.status === 'available' && (!revealedCard || isEventHost)
+                       ? 'border-primary bg-primary/10 hover:bg-primary/20 cursor-pointer hover:scale-105' 
+                       : card.status === 'reserved'
+                       ? 'border-yellow-500 bg-yellow-100 cursor-pointer hover:bg-yellow-200'
+                       : card.status === 'revealed'
+                       ? 'border-green-500 bg-green-100 cursor-not-allowed'
+                       : 'border-muted bg-muted/20 cursor-not-allowed opacity-50'
+                     }
                   `}
                   disabled={card.status === 'revealed' || (!isEventHost && revealedCard && revealedCard.id !== card.id && card.status !== 'reserved')}
                 >
@@ -455,12 +455,12 @@ const PublicEvent = () => {
                 <span className="text-sm">Disponível</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-red-100 border-2 border-red-500 rounded"></div>
+                <div className="w-4 h-4 bg-yellow-100 border-2 border-yellow-500 rounded"></div>
                 <span className="text-sm">Reservado</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-orange-100 border-2 border-orange-500 rounded"></div>
-                <span className="text-sm">Revelado</span>
+                <div className="w-4 h-4 bg-green-100 border-2 border-green-500 rounded"></div>
+                <span className="text-sm">Pago</span>
               </div>
             </div>
           </CardContent>
@@ -495,6 +495,8 @@ const PublicEvent = () => {
             cardNumber={pendingCard.card_number}
             eventName={event.name}
             eventId={event.id}
+            cardStatus={pendingCard.status}
+            reservedEmail={pendingCard.guest_email}
           />
         )}
 

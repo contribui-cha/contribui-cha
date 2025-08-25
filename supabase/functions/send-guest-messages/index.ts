@@ -120,7 +120,7 @@ serve(async (req) => {
               .replace(/{LINK}/g, `${req.headers.get("origin") || 'https://contribuicha.com'}/events/${event.slug}`);
 
             const emailResult = await resend.emails.send({
-              from: "Contribui&Chá <onboarding@resend.dev>",
+              from: "Contribui&Chá <noreply@contribuicha.com.br>",
               to: [guest.email],
               subject: subject,
               html: `
