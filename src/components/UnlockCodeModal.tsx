@@ -65,7 +65,7 @@ export const UnlockCodeModal = ({
     try {
       const { data: existingCard, error: checkError } = await supabase
         .from('cards')
-        .select('id, guest_email')
+        .select('id, guest_email, card_number')
         .eq('event_id', eventId)
         .eq('guest_email', email)
         .eq('status', 'revealed')
@@ -78,7 +78,7 @@ export const UnlockCodeModal = ({
       if (existingCard) {
         toast({
           title: "Card já revelado",
-          description: "Este email já revelou um card para este evento.",
+          description: `Você já revelou o card n°${existingCard.card_number} para este evento.`,
           variant: "destructive"
         });
         return;
