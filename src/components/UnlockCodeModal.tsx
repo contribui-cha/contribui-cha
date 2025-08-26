@@ -61,6 +61,13 @@ export const UnlockCodeModal = ({
       return;
     }
 
+    // Para cards reservados, se o email coincide, pular para sucesso direto
+    if (isReservedCard && reservedEmail && email === reservedEmail) {
+      // Usar o email como "código" para verificação automática
+      handleVerifyCode(email);
+      return;
+    }
+
     // Check if the email already has any card (revealed or reserved) for this event
     try {
       const { data: existingCards, error: checkError } = await supabase
@@ -69,10 +76,6 @@ export const UnlockCodeModal = ({
         .eq('event_id', eventId)
         .eq('guest_email', email)
         .in('status', ['revealed', 'reserved']);
-
-      if (checkError) {
-        console.error('[DEBUG] Error checking existing cards:', checkError);
-      }
 
       if (existingCards && existingCards.length > 0) {
         const existingCard = existingCards[0];
@@ -103,7 +106,7 @@ export const UnlockCodeModal = ({
         }
       }
     } catch (error) {
-      console.error('[DEBUG] Error checking existing cards:', error);
+      // Silencioso - não mostrar erro de checagem
     }
 
     // Check if card is reserved and email doesn't match
@@ -116,7 +119,6 @@ export const UnlockCodeModal = ({
       return;
     }
 
-    console.log('[DEBUG] Sending unlock code:', { email, eventName, cardNumber });
     setLoading(true);
     
     try {
@@ -129,15 +131,11 @@ export const UnlockCodeModal = ({
         }
       });
 
-      console.log('[DEBUG] Send unlock code response:', { data, error });
-
       if (error) {
-        console.error('[DEBUG] Error from send-unlock-code function:', error);
         throw error;
       }
 
       if (data?.success) {
-        console.log('[DEBUG] Code sent successfully');
         setSentCode(data.unlockCode);
         setStep('code');
         setCanResend(false);
@@ -150,11 +148,9 @@ export const UnlockCodeModal = ({
           description: `Um código de 6 dígitos foi enviado para ${email}`,
         });
       } else {
-        console.error('[DEBUG] Send code failed:', data);
         throw new Error(data?.error || 'Falha ao enviar código');
       }
     } catch (error: any) {
-      console.error('[DEBUG] Error in handleSendCode:', error);
       toast({
         title: "Erro ao enviar código",
         description: error.message || 'Erro desconhecido ao enviar código',
@@ -165,8 +161,11 @@ export const UnlockCodeModal = ({
     }
   };
 
-  const handleVerifyCode = async () => {
-    if (code.length !== 6) {
+  const handleVerifyCode = async (codeOrEmail?: string) => {
+    const codeToVerify = codeOrEmail || code;
+    
+    // Para cards reservados, permitir uso do email como "código"
+    if (!isReservedCard && codeToVerify.length !== 6) {
       toast({
         title: "Código inválido",
         description: "O código deve ter 6 dígitos",
@@ -175,7 +174,6 @@ export const UnlockCodeModal = ({
       return;
     }
 
-    console.log('[DEBUG] Verifying unlock code:', { email, eventId, cardNumber, code });
     setLoading(true);
     
     try {
@@ -185,15 +183,11 @@ export const UnlockCodeModal = ({
           email,
           eventId: eventId,
           cardNumber,
-          unlockCode: code
+          unlockCode: codeToVerify
         }
       });
 
-      console.log('[DEBUG] Verify unlock code response:', { data, error });
-
       if (error) {
-        console.error('[DEBUG] Error from verify-unlock-code function:', error);
-        
         // Mostrar erro específico da função
         let errorMessage = "Erro interno do servidor";
         if (error.message) {
@@ -209,7 +203,6 @@ export const UnlockCodeModal = ({
       }
 
       if (data?.success) {
-        console.log('[DEBUG] Code verified successfully');
         toast({
           title: "Card desbloqueado!",
           description: "Agora você pode prosseguir com a contribuição",
@@ -218,53 +211,14 @@ export const UnlockCodeModal = ({
         onSuccess();
         handleClose();
       } else {
-        console.error('[DEBUG] Verification failed:', data);
-        
-        // Traduzir mensagens de erro para português
-        let errorMessage = "Código incorreto";
-        if (data?.message) {
-          switch (data.message) {
-            case 'Invalid email format':
-              errorMessage = "Formato de email inválido";
-              break;
-            case 'Invalid unlock code format':
-              errorMessage = "Código deve ter 6 dígitos";
-              break;
-            case 'Too many attempts. Please try again later.':
-              errorMessage = "Muitas tentativas. Tente novamente mais tarde.";
-              break;
-            case 'Card not found':
-              errorMessage = "Card não encontrado";
-              break;
-            case 'Card is not available for unlock':
-              errorMessage = "Card não está disponível para desbloqueio";
-              break;
-            case 'Card is reserved by another user':
-              errorMessage = "Card está reservado por outro usuário";
-              break;
-            case 'Your reservation has expired':
-              errorMessage = "Sua reserva expirou";
-              break;
-            case 'Invalid unlock code':
-              errorMessage = "Código de desbloqueio inválido";
-              break;
-            case 'You have already revealed a card for this event':
-              errorMessage = "Você já revelou um card para este evento";
-              break;
-            default:
-              errorMessage = data.message;
-          }
-        }
-        
+        // As mensagens já vêm traduzidas do banco de dados
         toast({
           title: "Erro na verificação",
-          description: errorMessage,
+          description: data?.message || "Código incorreto",
           variant: "destructive"
         });
       }
     } catch (error: any) {
-      console.error('[DEBUG] Error in handleVerifyCode:', error);
-      
       let errorMessage = "Erro desconhecido na verificação";
       if (error.message) {
         errorMessage = error.message;
@@ -281,7 +235,6 @@ export const UnlockCodeModal = ({
   };
 
   const handleClose = () => {
-    console.log('[DEBUG] Closing unlock modal and resetting state');
     setStep('email');
     setEmail('');
     setCode('');
@@ -361,24 +314,13 @@ export const UnlockCodeModal = ({
           )}
         </div>
 
-        {/* Debug Info - Remove in production */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded p-2 text-xs">
-            <p><strong>Debug:</strong></p>
-            <p>Step: {step}</p>
-            <p>Email: {email}</p>
-            <p>Code: {code}</p>
-            <p>Loading: {loading ? 'Yes' : 'No'}</p>
-            <p>Can Resend: {canResend ? 'Yes' : 'No'}</p>
-          </div>
-        )}
 
         <DialogFooter className="flex gap-2">
           <Button variant="outline" onClick={handleClose} disabled={loading}>
             Cancelar
           </Button>
           <Button 
-            onClick={step === 'email' ? handleSendCode : handleVerifyCode}
+            onClick={step === 'email' ? handleSendCode : () => handleVerifyCode()}
             disabled={loading || (step === 'email' && !email) || (step === 'code' && code.length !== 6)}
           >
             {loading && <LoadingSpinner size="sm" className="mr-2" />}

@@ -16,41 +16,26 @@ interface UnlockCodeRequest {
   eventId: number;
 }
 
-// Helper function for logging
-const logStep = (step: string, details?: any) => {
-  const timestamp = new Date().toISOString();
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[${timestamp}] [SEND-UNLOCK-CODE] ${step}${detailsStr}`);
-};
+// Apenas logs de erro críticos serão mantidos
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    logStep("CORS preflight request");
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    logStep("Function started", { method: req.method, url: req.url });
-
     // Validate request method
     if (req.method !== "POST") {
-      logStep("Invalid method", { method: req.method });
-      throw new Error(`Method ${req.method} not allowed`);
+      throw new Error("Método não permitido");
     }
 
     // Parse request body
     let requestBody;
     try {
       requestBody = await req.json();
-      logStep("Request body parsed", { 
-        hasEmail: !!requestBody.email,
-        hasEventName: !!requestBody.eventName,
-        hasCardNumber: !!requestBody.cardNumber
-      });
     } catch (parseError) {
-      logStep("Failed to parse request body", { error: parseError.message });
-      throw new Error("Invalid JSON in request body");
+      throw new Error("JSON inválido no corpo da requisição");
     }
 
     const { email, eventName, cardNumber, eventId }: UnlockCodeRequest = requestBody;
@@ -63,51 +48,31 @@ serve(async (req) => {
       if (!cardNumber) missingFields.push('cardNumber');
       if (!eventId) missingFields.push('eventId');
       
-      logStep("Missing required fields", { missingFields });
-      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      throw new Error(`Campos obrigatórios ausentes: ${missingFields.join(', ')}`);
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      logStep("Invalid email format", { email });
-      throw new Error("Invalid email format");
+      throw new Error("Formato de email inválido");
     }
-
-    logStep("Request data validated", { email, eventName, cardNumber, eventId });
 
     // Check if Resend API key is configured
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    logStep("Environment check", { 
-      hasResendKey: !!resendApiKey,
-      keyType: typeof resendApiKey,
-      keyLength: resendApiKey?.length || 0,
-      allEnvKeys: Object.keys(Deno.env.toObject()).filter(key => key.includes('RESEND') || key.includes('API'))
-    });
     
     if (!resendApiKey) {
-      logStep("RESEND_API_KEY not configured", {
-        availableKeys: Object.keys(Deno.env.toObject()).slice(0, 10) // First 10 keys for debugging
-      });
-      throw new Error("Email service not configured - RESEND_API_KEY missing");
+      throw new Error("Serviço de email não configurado");
     }
-
-    logStep("Resend API key found", { keyLength: resendApiKey.length });
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
     if (!supabaseUrl || !supabaseServiceKey) {
-      logStep("Supabase configuration missing", { 
-        hasUrl: !!supabaseUrl, 
-        hasServiceKey: !!supabaseServiceKey 
-      });
-      throw new Error("Supabase configuration missing");
+      throw new Error("Configuração do Supabase ausente");
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    logStep("Supabase client initialized");
 
     // Verify card exists and is available
     const { data: cardData, error: cardError } = await supabase
@@ -118,25 +83,19 @@ serve(async (req) => {
       .single();
 
     if (cardError) {
-      logStep("Card lookup failed", { error: cardError.message });
-      throw new Error("Card not found");
+      throw new Error("Card não encontrado");
     }
 
     if (!cardData) {
-      logStep("Card not found", { eventId, cardNumber });
-      throw new Error("Card not found");
+      throw new Error("Card não encontrado");
     }
 
     if (cardData.status !== 'available') {
-      logStep("Card not available", { status: cardData.status, cardId: cardData.id });
-      throw new Error("Card is not available for unlock");
+      throw new Error("Card não está disponível para desbloqueio");
     }
-
-    logStep("Card validated", { cardId: cardData.id, status: cardData.status });
 
     // Generate 6-digit unlock code
     const unlockCode = Math.floor(100000 + Math.random() * 900000).toString();
-    logStep("Generated unlock code", { codeLength: unlockCode.length });
 
     // Save unlock code to database
     const { error: updateError } = await supabase
@@ -145,11 +104,8 @@ serve(async (req) => {
       .eq('id', cardData.id);
 
     if (updateError) {
-      logStep("Failed to save unlock code", { error: updateError.message });
-      throw new Error("Failed to save unlock code");
+      throw new Error("Falha ao salvar código de desbloqueio");
     }
-
-    logStep("Unlock code saved to database", { cardId: cardData.id });
 
     // Prepare email content
     const emailContent = {
@@ -194,62 +150,33 @@ serve(async (req) => {
       `,
     };
 
-    logStep("Email content prepared", { 
-      to: email, 
-      subject: emailContent.subject,
-      htmlLength: emailContent.html.length
-    });
-
-    // Initialize Resend client with validated API key
+    // Initialize Resend client
     let resend;
     try {
-      logStep("Initializing Resend client");
       resend = new Resend(resendApiKey);
     } catch (initError) {
-      logStep("Failed to initialize Resend client", { error: initError.message });
-      throw new Error(`Failed to initialize email service: ${initError.message}`);
+      throw new Error(`Falha ao inicializar serviço de email: ${initError.message}`);
     }
 
     // Send email using Resend
     let emailResponse;
     try {
-      logStep("Attempting to send email via Resend API");
       emailResponse = await resend.emails.send(emailContent);
-      logStep("Resend API response received", { 
-        hasData: !!emailResponse.data,
-        hasError: !!emailResponse.error,
-        dataId: emailResponse.data?.id,
-        errorMessage: emailResponse.error?.message
-      });
       
     } catch (emailError) {
-      logStep("Resend API call failed with exception", { 
-        error: emailError.message,
-        name: emailError.name,
-        stack: emailError.stack?.split('\n').slice(0, 3).join('\n')
-      });
-      throw new Error(`Failed to call email API: ${emailError.message}`);
+      console.error("Falha na API do Resend:", emailError.message);
+      throw new Error(`Falha ao chamar API de email: ${emailError.message}`);
     }
 
     // Check if email was sent successfully
     if (emailResponse.error) {
-      logStep("Email service returned error", { 
-        error: emailResponse.error,
-        message: emailResponse.error.message,
-        name: emailResponse.error.name
-      });
-      throw new Error(`Email service error: ${emailResponse.error.message || 'Unknown email service error'}`);
+      console.error("Erro do serviço de email:", emailResponse.error.message);
+      throw new Error(`Erro no serviço de email: ${emailResponse.error.message || 'Erro desconhecido do serviço de email'}`);
     }
 
     if (!emailResponse.data) {
-      logStep("No data returned from email service", { response: emailResponse });
-      throw new Error("Email service did not return confirmation data");
+      throw new Error("Serviço de email não retornou dados de confirmação");
     }
-
-    logStep("Email sent successfully", { 
-      messageId: emailResponse.data.id,
-      to: email 
-    });
 
     // Return success response
     const successResponse = { 
@@ -258,8 +185,6 @@ serve(async (req) => {
       message: "Código enviado com sucesso!",
       messageId: emailResponse.data.id
     };
-
-    logStep("Returning success response", { messageId: emailResponse.data.id });
 
     return new Response(JSON.stringify(successResponse), {
       status: 200,
@@ -270,16 +195,12 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
-    logStep("ERROR in send-unlock-code", { 
-      message: error.message, 
-      name: error.name,
-      stack: error.stack?.split('\n').slice(0, 5).join('\n')
-    });
+    console.error("ERRO in send-unlock-code:", error.message);
     
     // Return error response
     const errorResponse = { 
       success: false, 
-      error: error.message || 'Unknown error occurred',
+      error: error.message || 'Erro desconhecido',
       timestamp: new Date().toISOString()
     };
 
