@@ -182,9 +182,6 @@ const Dashboard = () => {
           <div className="flex items-center gap-4">
             <div className="text-right">
               <p className="font-medium">{profile?.name}</p>
-              <Badge variant="secondary" className="text-xs">
-                Plano {profile?.plan}
-              </Badge>
             </div>
             <Button variant="ghost" size="sm" onClick={handleSignOut}>
               <LogOut className="w-4 h-4" />
@@ -352,23 +349,6 @@ const Dashboard = () => {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Plano Atual</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center mb-4">
-                  <Badge variant="secondary" className="text-lg px-4 py-2">
-                    {profile?.plan}
-                  </Badge>
-                </div>
-                <Button variant="outline" className="w-full">
-                  <Settings className="w-4 h-4 mr-2" />
-                  Gerenciar Plano
-                </Button>
-              </CardContent>
-            </Card>
-
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Links Úteis</CardTitle>

@@ -156,6 +156,19 @@ const PublicEvent = () => {
     console.log('[DEBUG] Current revealed card:', revealedCard);
     console.log('[DEBUG] Is event host:', isEventHost);
 
+    // For authenticated users (event hosts), allow direct contribution without guest flow
+    if (user && card.status === 'available') {
+      console.log('[DEBUG] Authenticated user clicked available card');
+      setSelectedCard(card);
+      setGuestInfo({
+        name: user.email?.split('@')[0] || '',
+        email: user.email || '',
+        message: ''
+      });
+      setShowContributeModal(true);
+      return;
+    }
+
     // If user is not event host and already has a revealed card, prevent clicking
     if (!isEventHost && revealedCard) {
       console.log('[DEBUG] User already has revealed card, blocking click');
@@ -167,29 +180,22 @@ const PublicEvent = () => {
       return;
     }
 
-    // Check if this card needs unlock code (already reserved by this user)
-    if (card.status === 'reserved' && card.unlock_code && card.guest_email) {
-      console.log('[DEBUG] Card is reserved with unlock code, requesting verification');
+    // Check if this card is reserved by someone
+    if (card.status === 'reserved' && card.guest_email) {
+      console.log('[DEBUG] Card is reserved, requesting email verification');
       const userEmail = prompt('Digite seu email para confirmar:');
+      if (!userEmail) return;
+      
       if (userEmail === card.guest_email) {
-        const code = prompt('Digite o código de 6 dígitos enviado para seu email:');
-        if (code === card.unlock_code) {
-          setSelectedCard(card);
-          setGuestInfo(prev => ({ ...prev, email: card.guest_email || '' }));
-          setShowContributeModal(true);
-          return;
-        } else {
-          toast({
-            title: "Código incorreto",
-            description: "Verifique o código enviado no seu email",
-            variant: "destructive"
-          });
-          return;
-        }
+        // Email matches, user can proceed with contribution
+        setSelectedCard(card);
+        setGuestInfo(prev => ({ ...prev, email: card.guest_email || '' }));
+        setShowContributeModal(true);
+        return;
       } else {
         toast({
-          title: "Email não confere",
-          description: "Este card foi reservado por outro usuário",
+          title: "Card reservado",
+          description: "Este card foi reservado por outro email. Use o email correto ou escolha outro card.",
           variant: "destructive"
         });
         return;
@@ -395,11 +401,11 @@ const PublicEvent = () => {
             </div>
             <div className="space-y-4">
               <Progress value={progressPercentage} className="h-3" />
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-base font-semibold">
                 <span>R$ {(totalRaised / 100).toFixed(2)}</span>
                 <span>Meta: R$ {(event.goal_amount / 100).toFixed(2)}</span>
               </div>
-              <p className="text-center text-muted-foreground">
+              <p className="text-center text-muted-foreground font-medium text-base">
                 {progressPercentage.toFixed(1)}% da meta alcançada
               </p>
             </div>
@@ -422,17 +428,17 @@ const PublicEvent = () => {
                  <button
                   key={card.id}
                   onClick={() => handleCardClick(card)}
-                  className={`
-                    aspect-square rounded-lg border-2 transition-all duration-200 flex items-center justify-center font-bold text-sm
-                     ${card.status === 'available' && (!revealedCard || isEventHost)
-                       ? 'border-primary bg-primary/10 hover:bg-primary/20 cursor-pointer hover:scale-105' 
-                       : card.status === 'reserved'
-                       ? 'border-yellow-500 bg-yellow-100 cursor-pointer hover:bg-yellow-200'
-                       : card.status === 'revealed'
-                       ? 'border-green-500 bg-green-100 cursor-not-allowed'
-                       : 'border-muted bg-muted/20 cursor-not-allowed opacity-50'
-                     }
-                  `}
+                     className={`
+                     aspect-square rounded-lg border-2 transition-all duration-200 flex items-center justify-center font-bold text-sm
+                      ${card.status === 'available' && (!revealedCard || isEventHost || user)
+                        ? 'border-primary bg-primary/10 hover:bg-primary/20 cursor-pointer hover:scale-105' 
+                        : card.status === 'reserved'
+                        ? 'border-yellow-500 bg-yellow-100 cursor-pointer hover:bg-yellow-200'
+                        : card.status === 'revealed'
+                        ? 'border-green-500 bg-green-50 cursor-not-allowed'
+                        : 'border-muted bg-muted/20 cursor-not-allowed opacity-50'
+                      }
+                   `}
                   disabled={card.status === 'revealed' || (!isEventHost && revealedCard && revealedCard.id !== card.id && card.status !== 'reserved')}
                 >
                    {card.status === 'available' && (
