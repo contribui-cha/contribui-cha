@@ -37,7 +37,7 @@ const PaymentSuccess = () => {
         .eq('stripe_session_id', sessionId);
 
       if (paymentError) {
-        console.error('Error updating payment:', paymentError);
+        // Payment update failed - not critical
       }
 
       // Get payment details to update card
@@ -58,7 +58,7 @@ const PaymentSuccess = () => {
           .eq('id', payment.card_id);
 
         if (cardError) {
-          console.error('Error updating card:', cardError);
+          // Card update failed - not critical
         }
       }
 

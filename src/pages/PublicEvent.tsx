@@ -107,19 +107,15 @@ const PublicEvent = () => {
       const total = completedPayments?.reduce((sum, payment) => sum + payment.amount, 0) || 0;
       setTotalRaised(total);
     } catch (error) {
-      console.error('Error fetching total raised:', error);
+      // Silently fail - not critical
     }
   };
 
   const fetchEventData = async () => {
     try {
-      console.log('[DEBUG] Fetching event data for slug:', slug);
-      
       // Fetch event details using secure function
       const { data: eventData, error: eventError } = await supabase
         .rpc('get_public_event_by_slug', { _slug: slug });
-
-      console.log('[DEBUG] Event data response:', { eventData, eventError });
 
       if (eventError) throw eventError;
       
@@ -129,18 +125,14 @@ const PublicEvent = () => {
 
       const event = eventData[0];
       setEvent(event);
-      console.log('[DEBUG] Event set:', event);
 
       // Fetch cards using secure function
       const { data: cardsData, error: cardsError } = await supabase
         .rpc('get_public_cards_by_event', { _event_id: event.id });
 
-      console.log('[DEBUG] Cards data response:', { cardsData, cardsError });
-
       if (cardsError) throw cardsError;
       setCards(cardsData || []);
     } catch (error: any) {
-      console.error('[DEBUG] Error fetching event data:', error);
       toast({
         title: "Erro",
         description: "Evento não encontrado",
@@ -152,13 +144,8 @@ const PublicEvent = () => {
   };
 
   const handleCardClick = (card: Card) => {
-    console.log('[DEBUG] Card clicked:', card);
-    console.log('[DEBUG] Current revealed card:', revealedCard);
-    console.log('[DEBUG] Is event host:', isEventHost);
-
     // For authenticated users (event hosts), allow direct contribution without guest flow
     if (user && card.status === 'available') {
-      console.log('[DEBUG] Authenticated user clicked available card');
       setSelectedCard(card);
       setGuestInfo({
         name: user.email?.split('@')[0] || '',
@@ -171,7 +158,6 @@ const PublicEvent = () => {
 
     // If user is not event host and already has a revealed card, prevent clicking
     if (!isEventHost && revealedCard) {
-      console.log('[DEBUG] User already has revealed card, blocking click');
       toast({
         title: "Card já revelado",
         description: "Você já revelou um card para este evento.",
@@ -182,7 +168,6 @@ const PublicEvent = () => {
 
     // Always open unlock modal for reserved cards - they need to enter email to proceed
     if (card.status === 'reserved') {
-      console.log('[DEBUG] Card is reserved, opening unlock modal for email verification');
       setPendingCard(card);
       setShowUnlockModal(true);
       return;
@@ -190,23 +175,16 @@ const PublicEvent = () => {
 
     // If card is available and user hasn't revealed any card yet
     if (card.status === 'available' && (!revealedCard || isEventHost)) {
-      console.log('[DEBUG] Card is available, opening unlock modal');
       setPendingCard(card);
       setShowUnlockModal(true);
-    } else {
-      console.log('[DEBUG] Card click blocked - status:', card.status, 'revealedCard:', !!revealedCard);
     }
   };
 
   const handleUnlockSuccess = () => {
-    console.log('[DEBUG] Unlock success callback triggered');
-    console.log('[DEBUG] Pending card:', pendingCard);
-    
     setShowUnlockModal(false);
     
     // Immediately open contribute modal with the pending card
     if (pendingCard) {
-      console.log('[DEBUG] Opening contribute modal with pending card');
       setSelectedCard(pendingCard);
       setGuestInfo(prev => ({ 
         ...prev, 
@@ -255,17 +233,10 @@ const PublicEvent = () => {
       return;
     }
 
-    console.log('[DEBUG] Starting contribution process:', {
-      card: selectedCard,
-      event: event.id,
-      guestInfo
-    });
-
     setSubmitting(true);
     try {
       // Save message if provided
       if (guestInfo.message) {
-        console.log('[DEBUG] Saving guest message');
         await supabase.from('messages').insert({
           event_id: event.id,
           guest_name: guestInfo.name,
@@ -275,7 +246,6 @@ const PublicEvent = () => {
       }
 
       // Call Stripe checkout edge function
-      console.log('[DEBUG] Calling Stripe checkout function');
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
           card_id: selectedCard.id,
@@ -286,13 +256,10 @@ const PublicEvent = () => {
         }
       });
 
-      console.log('[DEBUG] Stripe checkout response:', { data, error });
-
       if (error) throw error;
 
       // Redirect to Stripe checkout
       if (data.url) {
-        console.log('[DEBUG] Redirecting to Stripe checkout:', data.url);
         window.open(data.url, '_blank');
       }
       
@@ -300,7 +267,6 @@ const PublicEvent = () => {
       setShowContributeModal(false);
       setGuestInfo({ name: '', email: '', message: '' });
     } catch (error: any) {
-      console.error('[DEBUG] Error in contribution process:', error);
       toast({
         title: "Erro",
         description: "Erro ao processar pagamento",
@@ -479,7 +445,6 @@ const PublicEvent = () => {
           <UnlockCodeModal
             isOpen={showUnlockModal}
             onClose={() => {
-              console.log('[DEBUG] Closing unlock modal');
               setShowUnlockModal(false);
               setPendingCard(null);
             }}

@@ -64,16 +64,6 @@ const GuestMessaging: React.FC<GuestMessagingProps> = ({ eventId, eventName, gue
     try {
       const selectedGuestData = guests.filter(g => selectedGuests.includes(g.id));
       
-      console.log('Sending messages to:', selectedGuestData);
-      console.log('Request payload:', {
-        guests: selectedGuestData,
-        event_id: eventId,
-        subject,
-        message,
-        send_email: sendEmail,
-        send_whatsapp: sendWhatsapp
-      });
-
       const { data, error } = await supabase.functions.invoke('send-guest-messages', {
         body: {
           guests: selectedGuestData,
@@ -85,10 +75,7 @@ const GuestMessaging: React.FC<GuestMessagingProps> = ({ eventId, eventName, gue
         }
       });
 
-      console.log('Function response:', { data, error });
-
       if (error) {
-        console.error('Supabase function error:', error);
         throw new Error(error.message || 'Erro ao enviar mensagens');
       }
 

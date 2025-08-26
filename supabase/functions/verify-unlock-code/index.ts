@@ -46,9 +46,6 @@ serve(async (req) => {
       throw new Error(`Campos obrigatórios ausentes: ${missingFields.join(', ')}`);
     }
 
-    // Para cards reservados, permite envio do email ao invés do código
-    // A validação do formato será feita pela função do banco
-    
     // Get Supabase credentials
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -70,7 +67,6 @@ serve(async (req) => {
     });
 
     if (error) {
-      console.error("Erro na função do banco:", error.message);
       throw new Error(`Erro no banco de dados: ${error.message}`);
     }
 
@@ -81,7 +77,22 @@ serve(async (req) => {
     const result = data[0];
     
     if (!result.success) {
-      throw new Error(result.message);
+      // Retornar erro com status 400 para que o frontend mostre como toast
+      const errorResponse = { 
+        success: false, 
+        message: result.message || 'Erro na verificação do código'
+      };
+
+      return new Response(
+        JSON.stringify(errorResponse),
+        {
+          status: 400,
+          headers: { 
+            "Content-Type": "application/json", 
+            ...corsHeaders 
+          },
+        }
+      );
     }
 
     // Return success response
@@ -102,12 +113,9 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
-    console.error("ERRO in verify-unlock-code:", error.message);
-    
     const errorResponse = { 
       success: false, 
-      message: error.message || 'Erro na verificação do código',
-      timestamp: new Date().toISOString()
+      message: error.message || 'Erro na verificação do código'
     };
 
     return new Response(

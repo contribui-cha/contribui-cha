@@ -86,7 +86,7 @@ const Dashboard = () => {
       if (error) throw error;
       setProfile(data);
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      // Silently fail - not critical
     }
   };
 
@@ -101,7 +101,7 @@ const Dashboard = () => {
       if (error) throw error;
       setEvents(data || []);
     } catch (error) {
-      console.error('Error fetching events:', error);
+      // Silently fail - will show empty state
     } finally {
       setLoading(false);
     }
@@ -166,7 +166,7 @@ const Dashboard = () => {
       });
 
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      // Silently fail - stats will show 0
     }
   };
 
@@ -218,7 +218,7 @@ const Dashboard = () => {
         navigate('/');
       }
     } catch (error) {
-      console.error('Error deleting account:', error);
+      // Error handled by auth context
     } finally {
       setDeletingAccount(false);
     }

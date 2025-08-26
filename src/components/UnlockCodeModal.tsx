@@ -61,8 +61,8 @@ export const UnlockCodeModal = ({
       return;
     }
 
-    // Para cards reservados, se o email coincide, pular para sucesso direto
-    if (isReservedCard && reservedEmail && email === reservedEmail) {
+    // Para cards reservados, se o email coincide, verificar diretamente
+    if (isReservedCard && reservedEmail && email.toLowerCase().trim() === reservedEmail.toLowerCase().trim()) {
       // Usar o email como "código" para verificação automática
       handleVerifyCode(email);
       return;
@@ -164,8 +164,11 @@ export const UnlockCodeModal = ({
   const handleVerifyCode = async (codeOrEmail?: string) => {
     const codeToVerify = codeOrEmail || code;
     
-    // Para cards reservados, permitir uso do email como "código"
-    if (!isReservedCard && codeToVerify.length !== 6) {
+    // Para cards reservados com email correspondente, usar email como código
+    const isEmailAsCode = isReservedCard && reservedEmail && email.toLowerCase().trim() === reservedEmail.toLowerCase().trim();
+    
+    // Validar código apenas se não for caso especial de email
+    if (!isEmailAsCode && codeToVerify.length !== 6) {
       toast({
         title: "Código inválido",
         description: "O código deve ter 6 dígitos",
@@ -177,26 +180,22 @@ export const UnlockCodeModal = ({
     setLoading(true);
     
     try {
-      // Use secure verification function
+      // Para cards reservados com mesmo email, usar email como código
+      const codeToSend = isEmailAsCode ? email : codeToVerify;
+      
       const { data, error } = await supabase.functions.invoke('verify-unlock-code', {
         body: {
           email,
           eventId: eventId,
           cardNumber,
-          unlockCode: codeToVerify
+          unlockCode: codeToSend
         }
       });
 
       if (error) {
-        // Mostrar erro específico da função
-        let errorMessage = "Erro interno do servidor";
-        if (error.message) {
-          errorMessage = error.message;
-        }
-        
         toast({
           title: "Erro na verificação",
-          description: errorMessage,
+          description: error.message || "Erro interno do servidor",
           variant: "destructive"
         });
         return;
@@ -205,13 +204,12 @@ export const UnlockCodeModal = ({
       if (data?.success) {
         toast({
           title: "Card desbloqueado!",
-          description: "Agora você pode prosseguir com a contribuição",
+          description: data.message || "Agora você pode prosseguir com a contribuição",
         });
 
         onSuccess();
         handleClose();
       } else {
-        // As mensagens já vêm traduzidas do banco de dados
         toast({
           title: "Erro na verificação",
           description: data?.message || "Código incorreto",
@@ -219,14 +217,9 @@ export const UnlockCodeModal = ({
         });
       }
     } catch (error: any) {
-      let errorMessage = "Erro desconhecido na verificação";
-      if (error.message) {
-        errorMessage = error.message;
-      }
-      
       toast({
         title: "Erro ao desbloquear card",
-        description: errorMessage,
+        description: error.message || "Erro desconhecido na verificação",
         variant: "destructive"
       });
     } finally {
