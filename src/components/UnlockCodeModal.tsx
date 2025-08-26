@@ -61,6 +61,32 @@ export const UnlockCodeModal = ({
       return;
     }
 
+    // Check if the email already has a revealed card
+    try {
+      const { data: existingCard, error: checkError } = await supabase
+        .from('cards')
+        .select('id, guest_email')
+        .eq('event_id', eventId)
+        .eq('guest_email', email)
+        .eq('status', 'revealed')
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('[DEBUG] Error checking existing cards:', checkError);
+      }
+
+      if (existingCard) {
+        toast({
+          title: "Card já revelado",
+          description: "Este email já revelou um card para este evento.",
+          variant: "destructive"
+        });
+        return;
+      }
+    } catch (error) {
+      console.error('[DEBUG] Error checking existing cards:', error);
+    }
+
     // Check if card is reserved and email doesn't match
     if (isReservedCard && reservedEmail && email !== reservedEmail) {
       toast({
@@ -79,7 +105,8 @@ export const UnlockCodeModal = ({
         body: { 
           email, 
           eventName, 
-          cardNumber 
+          cardNumber,
+          event_id: eventId
         }
       });
 

@@ -38,6 +38,9 @@ interface Payment {
   created_at: string;
   paid_at?: string;
   status: string;
+  cards?: {
+    guest_name?: string;
+  };
 }
 
 interface Card {
@@ -112,15 +115,23 @@ const Reports = () => {
     if (!selectedEvent) return;
 
     try {
-      // Fetch payments
+      // Fetch payments with names from cards
       const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
-        .select('*')
+        .select(`
+          *,
+          cards!inner(guest_name)
+        `)
         .eq('event_id', parseInt(selectedEvent))
         .order('created_at', { ascending: false });
 
       if (paymentsError) throw paymentsError;
-      setPayments(paymentsData || []);
+      // Process payments with guest names from cards
+      const processedPayments = paymentsData?.map(payment => ({
+        ...payment,
+        guest_name: payment.cards?.guest_name || 'Anônimo'
+      })) || [];
+      setPayments(processedPayments);
 
       // Fetch cards
       const { data: cardsData, error: cardsError } = await supabase
