@@ -106,7 +106,7 @@ export const UnlockCodeModal = ({
           email, 
           eventName, 
           cardNumber,
-          event_id: eventId
+          eventId: eventId
         }
       });
 

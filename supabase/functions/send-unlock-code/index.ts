@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +13,7 @@ interface UnlockCodeRequest {
   email: string;
   eventName: string;
   cardNumber: number;
+  eventId: number;
 }
 
 // Helper function for logging
@@ -51,14 +53,15 @@ serve(async (req) => {
       throw new Error("Invalid JSON in request body");
     }
 
-    const { email, eventName, cardNumber }: UnlockCodeRequest = requestBody;
+    const { email, eventName, cardNumber, eventId }: UnlockCodeRequest = requestBody;
     
     // Validate required fields
-    if (!email || !eventName || !cardNumber) {
+    if (!email || !eventName || !cardNumber || !eventId) {
       const missingFields = [];
       if (!email) missingFields.push('email');
       if (!eventName) missingFields.push('eventName');
       if (!cardNumber) missingFields.push('cardNumber');
+      if (!eventId) missingFields.push('eventId');
       
       logStep("Missing required fields", { missingFields });
       throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
@@ -71,7 +74,7 @@ serve(async (req) => {
       throw new Error("Invalid email format");
     }
 
-    logStep("Request data validated", { email, eventName, cardNumber });
+    logStep("Request data validated", { email, eventName, cardNumber, eventId });
 
     // Check if Resend API key is configured
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
@@ -91,9 +94,62 @@ serve(async (req) => {
 
     logStep("Resend API key found", { keyLength: resendApiKey.length });
 
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      logStep("Supabase configuration missing", { 
+        hasUrl: !!supabaseUrl, 
+        hasServiceKey: !!supabaseServiceKey 
+      });
+      throw new Error("Supabase configuration missing");
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    logStep("Supabase client initialized");
+
+    // Verify card exists and is available
+    const { data: cardData, error: cardError } = await supabase
+      .from('cards')
+      .select('id, status, event_id')
+      .eq('event_id', eventId)
+      .eq('card_number', cardNumber)
+      .single();
+
+    if (cardError) {
+      logStep("Card lookup failed", { error: cardError.message });
+      throw new Error("Card not found");
+    }
+
+    if (!cardData) {
+      logStep("Card not found", { eventId, cardNumber });
+      throw new Error("Card not found");
+    }
+
+    if (cardData.status !== 'available') {
+      logStep("Card not available", { status: cardData.status, cardId: cardData.id });
+      throw new Error("Card is not available for unlock");
+    }
+
+    logStep("Card validated", { cardId: cardData.id, status: cardData.status });
+
     // Generate 6-digit unlock code
     const unlockCode = Math.floor(100000 + Math.random() * 900000).toString();
     logStep("Generated unlock code", { codeLength: unlockCode.length });
+
+    // Save unlock code to database
+    const { error: updateError } = await supabase
+      .from('cards')
+      .update({ unlock_code: unlockCode })
+      .eq('id', cardData.id);
+
+    if (updateError) {
+      logStep("Failed to save unlock code", { error: updateError.message });
+      throw new Error("Failed to save unlock code");
+    }
+
+    logStep("Unlock code saved to database", { cardId: cardData.id });
 
     // Prepare email content
     const emailContent = {
