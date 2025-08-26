@@ -13,10 +13,23 @@ import {
   Plus,
   Heart,
   BarChart3,
-  LogOut
+  LogOut,
+  Trash2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { PageLoader } from '@/components/PageLoader';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface Profile {
   name: string;
@@ -37,11 +50,14 @@ interface Event {
 }
 
 const Dashboard = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, deleteAccount } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingEvent, setDeletingEvent] = useState<number | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [stats, setStats] = useState({
     totalRaised: 0,
     totalContributions: 0,
@@ -166,6 +182,48 @@ const Dashboard = () => {
     }).format(value / 100);
   };
 
+  const handleDeleteEvent = async (eventId: number) => {
+    setDeletingEvent(eventId);
+    try {
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', eventId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Evento excluído",
+        description: "O evento foi excluído com sucesso.",
+      });
+
+      // Refresh events list
+      fetchEvents();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao excluir evento",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setDeletingEvent(null);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      const { error } = await deleteAccount();
+      if (!error) {
+        navigate('/');
+      }
+    } catch (error) {
+      console.error('Error deleting account:', error);
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
   if (loading) {
     return <PageLoader message="Carregando dashboard..." />;
   }
@@ -183,6 +241,31 @@ const Dashboard = () => {
             <div className="text-right">
               <p className="font-medium">{profile?.name}</p>
             </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Deletar Conta</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja deletar sua conta? Esta ação não pode ser desfeita e todos os seus dados serão perdidos permanentemente.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteAccount}
+                    disabled={deletingAccount}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {deletingAccount ? 'Deletando...' : 'Deletar Conta'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <Button variant="ghost" size="sm" onClick={handleSignOut}>
               <LogOut className="w-4 h-4" />
             </Button>
@@ -339,6 +422,34 @@ const Dashboard = () => {
                           <MessageSquare className="w-4 h-4 mr-1" />
                           Mensagens
                         </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Excluir
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir Evento</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja excluir o evento "{event.name}"? 
+                                <br /><br />
+                                <strong>Atenção:</strong> Esta ação não pode ser desfeita e os valores já pagos por participantes <strong>NÃO serão devolvidos</strong>. Todos os dados relacionados ao evento serão perdidos permanentemente.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteEvent(event.id)}
+                                disabled={deletingEvent === event.id}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                {deletingEvent === event.id ? 'Excluindo...' : 'Excluir Evento'}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </CardContent>
                   </Card>

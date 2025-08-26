@@ -180,26 +180,12 @@ const PublicEvent = () => {
       return;
     }
 
-    // Check if this card is reserved by someone
-    if (card.status === 'reserved' && card.guest_email) {
-      console.log('[DEBUG] Card is reserved, requesting email verification');
-      const userEmail = prompt('Digite seu email para confirmar:');
-      if (!userEmail) return;
-      
-      if (userEmail === card.guest_email) {
-        // Email matches, user can proceed with contribution
-        setSelectedCard(card);
-        setGuestInfo(prev => ({ ...prev, email: card.guest_email || '' }));
-        setShowContributeModal(true);
-        return;
-      } else {
-        toast({
-          title: "Card reservado",
-          description: "Este card foi reservado por outro email. Use o email correto ou escolha outro card.",
-          variant: "destructive"
-        });
-        return;
-      }
+    // Always open unlock modal for reserved cards - they need to enter email to proceed
+    if (card.status === 'reserved') {
+      console.log('[DEBUG] Card is reserved, opening unlock modal for email verification');
+      setPendingCard(card);
+      setShowUnlockModal(true);
+      return;
     }
 
     // If card is available and user hasn't revealed any card yet

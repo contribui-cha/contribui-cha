@@ -10,6 +10,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, name: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -106,13 +107,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const deleteAccount = async () => {
+    try {
+      const { error } = await supabase.functions.invoke('delete-account');
+      
+      if (error) {
+        toast({
+          title: "Erro ao deletar conta",
+          description: error.message,
+          variant: "destructive"
+        });
+        return { error };
+      }
+
+      toast({
+        title: "Conta deletada",
+        description: "Sua conta foi deletada com sucesso.",
+      });
+
+      // Sign out after successful deletion
+      await signOut();
+
+      return { error: null };
+    } catch (error: any) {
+      toast({
+        title: "Erro ao deletar conta",
+        description: "Erro inesperado ao deletar conta",
+        variant: "destructive"
+      });
+      return { error };
+    }
+  };
+
   const value = {
     user,
     session,
     loading,
     signUp,
     signIn,
-    signOut
+    signOut,
+    deleteAccount
   };
 
   return (
