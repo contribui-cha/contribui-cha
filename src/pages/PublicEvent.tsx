@@ -431,10 +431,12 @@ const PublicEvent = () => {
               <h4 className="font-bold text-yellow-600 mb-2">Debug Info</h4>
               <div className="text-sm space-y-1">
                 <p>Event ID: {event?.id}</p>
+                <p>Event Slug: {slug}</p>
                 <p>Cards Count: {cards.length}</p>
                 <p>Revealed Card: {revealedCard ? `#${revealedCard.card_number}` : 'None'}</p>
                 <p>Show Unlock Modal: {showUnlockModal ? 'Yes' : 'No'}</p>
                 <p>Pending Card: {pendingCard ? `#${pendingCard.card_number}` : 'None'}</p>
+                <p>EventID sendo passado para modal: {pendingCard ? event.id : 'N/A'}</p>
               </div>
             </CardContent>
           </Card>

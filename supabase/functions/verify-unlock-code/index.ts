@@ -35,6 +35,14 @@ serve(async (req) => {
 
     const { email, eventId, cardNumber, unlockCode }: VerifyCodeRequest = requestBody;
 
+    // Debug log para verificar dados recebidos
+    console.log('verify-unlock-code - Dados recebidos:', {
+      email,
+      eventId,
+      cardNumber,
+      unlockCode
+    });
+
     // Validate required fields
     if (!email || !eventId || !cardNumber || !unlockCode) {
       const missingFields = [];

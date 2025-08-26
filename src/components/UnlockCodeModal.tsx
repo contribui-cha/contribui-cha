@@ -184,6 +184,14 @@ export const UnlockCodeModal = ({
       // A função de banco detectará automaticamente e dará sucesso
       const codeToSend = isEmailAsCode ? "000000" : codeToVerify;
       
+      // Debug log para verificar dados sendo enviados
+      console.log('UnlockCodeModal - Dados enviados:', {
+        email,
+        eventId: eventId,
+        cardNumber,
+        unlockCode: codeToSend
+      });
+
       const { data, error } = await supabase.functions.invoke('verify-unlock-code', {
         body: {
           email,
