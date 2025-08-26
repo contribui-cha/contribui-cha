@@ -85,7 +85,7 @@ serve(async (req) => {
     const result = data[0];
     
     if (!result.success) {
-      // Retornar erro com status 400 para que o frontend mostre como toast
+      // SEMPRE retornar status 200 para que o frontend processe corretamente
       const errorResponse = { 
         success: false, 
         message: result.message || 'Erro na verificação do código'
@@ -94,7 +94,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify(errorResponse),
         {
-          status: 400,
+          status: 200,
           headers: { 
             "Content-Type": "application/json", 
             ...corsHeaders 
@@ -121,6 +121,9 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
+    console.error('❌ Error in verify-unlock-code function:', error);
+    
+    // SEMPRE retornar status 200 para que o frontend processe corretamente
     const errorResponse = { 
       success: false, 
       message: error.message || 'Erro na verificação do código'
@@ -129,7 +132,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify(errorResponse),
       {
-        status: 500,
+        status: 200,
         headers: { 
           "Content-Type": "application/json", 
           ...corsHeaders 

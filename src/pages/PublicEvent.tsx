@@ -438,6 +438,42 @@ const PublicEvent = () => {
                 <p>Pending Card: {pendingCard ? `#${pendingCard.card_number}` : 'None'}</p>
                 <p>EventID sendo passado para modal: {pendingCard ? event.id : 'N/A'}</p>
               </div>
+              
+              {/* Teste de Toast */}
+              <div className="mt-4 pt-2 border-t border-yellow-300">
+                <p className="text-xs font-semibold mb-2">Teste do Sistema de Toast:</p>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => {
+                      console.log('🧪 Testando toast de sucesso...');
+                      import('@/hooks/use-toast').then(({ toast }) => {
+                        toast({
+                          title: "✅ Sucesso!",
+                          description: "Sistema de toast funcionando!",
+                        });
+                      });
+                    }}
+                    className="text-xs px-2 py-1 bg-green-500 text-white rounded"
+                  >
+                    Teste Sucesso
+                  </button>
+                  <button 
+                    onClick={() => {
+                      console.log('🧪 Testando toast de erro...');
+                      import('@/hooks/use-toast').then(({ toast }) => {
+                        toast({
+                          title: "❌ Erro!",
+                          description: "Sistema de toast funcionando!",
+                          variant: "destructive"
+                        });
+                      });
+                    }}
+                    className="text-xs px-2 py-1 bg-red-500 text-white rounded"
+                  >
+                    Teste Erro
+                  </button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}

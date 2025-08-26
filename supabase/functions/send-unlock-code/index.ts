@@ -195,9 +195,9 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
-    console.error("ERRO in send-unlock-code:", error.message);
+    console.error("❌ ERRO in send-unlock-code:", error.message);
     
-    // Return error response
+    // Return error response com status 200 para que o frontend processe corretamente
     const errorResponse = { 
       success: false, 
       error: error.message || 'Erro desconhecido',
@@ -207,7 +207,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify(errorResponse),
       {
-        status: 500,
+        status: 200,
         headers: { 
           "Content-Type": "application/json", 
           ...corsHeaders 

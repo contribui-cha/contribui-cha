@@ -122,6 +122,8 @@ export const UnlockCodeModal = ({
     setLoading(true);
     
     try {
+      console.log('🚀 Enviando código para:', { email, eventName, cardNumber, eventId });
+      
       const { data, error } = await supabase.functions.invoke('send-unlock-code', {
         body: { 
           email, 
@@ -131,11 +133,34 @@ export const UnlockCodeModal = ({
         }
       });
 
+      console.log('📡 Resposta da Edge Function send-unlock-code:', { data, error });
+
+      // IMPORTANTE: supabase.functions.invoke não joga exceção para erro HTTP
+      // Precisamos verificar se a resposta contém success: false
       if (error) {
-        throw error;
+        console.error('❌ Erro da Edge Function:', error);
+        toast({
+          title: "Erro ao enviar código",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
       }
 
-      if (data?.success) {
+      // Verificar se a resposta indica erro no business logic
+      if (data && !data.success) {
+        console.error('❌ Erro de negócio:', data.error);
+        toast({
+          title: "Erro ao enviar código",
+          description: data.error || "Falha ao enviar código",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Sucesso
+      if (data && data.success) {
+        console.log('✅ Código enviado com sucesso!');
         setSentCode(data.unlockCode);
         setStep('code');
         setCanResend(false);
@@ -148,12 +173,19 @@ export const UnlockCodeModal = ({
           description: `Um código de 6 dígitos foi enviado para ${email}`,
         });
       } else {
-        throw new Error(data?.error || 'Falha ao enviar código');
+        // Resposta inesperada
+        console.warn('⚠️ Resposta inesperada:', data);
+        toast({
+          title: "Erro inesperado",
+          description: "Resposta inválida do servidor",
+          variant: "destructive"
+        });
       }
     } catch (error: any) {
+      console.error('❌ Exceção no envio de código:', error);
       toast({
         title: "Erro ao enviar código",
-        description: error.message || 'Erro desconhecido ao enviar código',
+        description: error.message || "Erro interno do servidor",
         variant: "destructive"
       });
     } finally {
@@ -201,7 +233,11 @@ export const UnlockCodeModal = ({
         }
       });
 
+      console.log('📡 Resposta da verificação:', { data, error });
+
+      // IMPORTANTE: supabase.functions.invoke não joga exceção para erro HTTP
       if (error) {
+        console.error('❌ Erro da Edge Function verify:', error);
         toast({
           title: "Erro na verificação",
           description: error.message || "Erro interno do servidor",
@@ -210,7 +246,20 @@ export const UnlockCodeModal = ({
         return;
       }
 
-      if (data?.success) {
+      // Verificar se a resposta indica erro no business logic
+      if (data && !data.success) {
+        console.error('❌ Erro de negócio na verificação:', data.message);
+        toast({
+          title: "Erro na verificação",
+          description: data.message || "Código inválido",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Sucesso
+      if (data && data.success) {
+        console.log('✅ Código verificado com sucesso!');
         toast({
           title: "Card desbloqueado!",
           description: data.message || "Agora você pode prosseguir com a contribuição",
@@ -219,13 +268,16 @@ export const UnlockCodeModal = ({
         onSuccess();
         handleClose();
       } else {
+        // Resposta inesperada
+        console.warn('⚠️ Resposta inesperada na verificação:', data);
         toast({
-          title: "Erro na verificação",
-          description: data?.message || "Código incorreto",
+          title: "Erro inesperado",
+          description: "Resposta inválida do servidor",
           variant: "destructive"
         });
       }
     } catch (error: any) {
+      console.error('❌ Exceção na verificação:', error);
       toast({
         title: "Erro ao desbloquear card",
         description: error.message || "Erro desconhecido na verificação",
