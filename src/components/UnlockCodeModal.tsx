@@ -164,7 +164,7 @@ export const UnlockCodeModal = ({
   const handleVerifyCode = async (codeOrEmail?: string) => {
     const codeToVerify = codeOrEmail || code;
     
-    // Para cards reservados com email correspondente, usar email como código
+    // Para cards reservados com email correspondente, usar código placeholder
     const isEmailAsCode = isReservedCard && reservedEmail && email.toLowerCase().trim() === reservedEmail.toLowerCase().trim();
     
     // Validar código apenas se não for caso especial de email
@@ -180,8 +180,9 @@ export const UnlockCodeModal = ({
     setLoading(true);
     
     try {
-      // Para cards reservados com mesmo email, usar email como código
-      const codeToSend = isEmailAsCode ? email : codeToVerify;
+      // Para cards reservados com mesmo email, usar código placeholder
+      // A função de banco detectará automaticamente e dará sucesso
+      const codeToSend = isEmailAsCode ? "000000" : codeToVerify;
       
       const { data, error } = await supabase.functions.invoke('verify-unlock-code', {
         body: {
