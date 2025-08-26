@@ -61,27 +61,46 @@ export const UnlockCodeModal = ({
       return;
     }
 
-    // Check if the email already has a revealed card
+    // Check if the email already has any card (revealed or reserved) for this event
     try {
-      const { data: existingCard, error: checkError } = await supabase
+      const { data: existingCards, error: checkError } = await supabase
         .from('cards')
-        .select('id, guest_email, card_number')
+        .select('id, guest_email, card_number, status, reserved_until')
         .eq('event_id', eventId)
         .eq('guest_email', email)
-        .eq('status', 'revealed')
-        .maybeSingle();
+        .in('status', ['revealed', 'reserved']);
 
       if (checkError) {
         console.error('[DEBUG] Error checking existing cards:', checkError);
       }
 
-      if (existingCard) {
-        toast({
-          title: "Card já revelado",
-          description: `Você já revelou o card n°${existingCard.card_number} para este evento.`,
-          variant: "destructive"
-        });
-        return;
+      if (existingCards && existingCards.length > 0) {
+        const existingCard = existingCards[0];
+        
+        if (existingCard.status === 'revealed') {
+          toast({
+            title: "Card já revelado",
+            description: `Você já revelou o card n°${existingCard.card_number} para este evento.`,
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        if (existingCard.status === 'reserved') {
+          // Check if reservation is still valid
+          const reservedUntil = new Date(existingCard.reserved_until);
+          const now = new Date();
+          
+          if (reservedUntil > now) {
+            const hoursRemaining = Math.ceil((reservedUntil.getTime() - now.getTime()) / (1000 * 60 * 60));
+            toast({
+              title: "Card já reservado",
+              description: `Você já reservou o card n°${existingCard.card_number} para este evento. Sua reserva expira em ${hoursRemaining} hora(s).`,
+              variant: "destructive"
+            });
+            return;
+          }
+        }
       }
     } catch (error) {
       console.error('[DEBUG] Error checking existing cards:', error);
