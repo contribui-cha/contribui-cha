@@ -174,7 +174,19 @@ export const UnlockCodeModal = ({
 
       if (error) {
         console.error('[DEBUG] Error from verify-unlock-code function:', error);
-        throw error;
+        
+        // Mostrar erro específico da função
+        let errorMessage = "Erro interno do servidor";
+        if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        toast({
+          title: "Erro na verificação",
+          description: errorMessage,
+          variant: "destructive"
+        });
+        return;
       }
 
       if (data?.success) {
@@ -188,17 +200,60 @@ export const UnlockCodeModal = ({
         handleClose();
       } else {
         console.error('[DEBUG] Verification failed:', data);
+        
+        // Traduzir mensagens de erro para português
+        let errorMessage = "Código incorreto";
+        if (data?.message) {
+          switch (data.message) {
+            case 'Invalid email format':
+              errorMessage = "Formato de email inválido";
+              break;
+            case 'Invalid unlock code format':
+              errorMessage = "Código deve ter 6 dígitos";
+              break;
+            case 'Too many attempts. Please try again later.':
+              errorMessage = "Muitas tentativas. Tente novamente mais tarde.";
+              break;
+            case 'Card not found':
+              errorMessage = "Card não encontrado";
+              break;
+            case 'Card is not available for unlock':
+              errorMessage = "Card não está disponível para desbloqueio";
+              break;
+            case 'Card is reserved by another user':
+              errorMessage = "Card está reservado por outro usuário";
+              break;
+            case 'Your reservation has expired':
+              errorMessage = "Sua reserva expirou";
+              break;
+            case 'Invalid unlock code':
+              errorMessage = "Código de desbloqueio inválido";
+              break;
+            case 'You have already revealed a card for this event':
+              errorMessage = "Você já revelou um card para este evento";
+              break;
+            default:
+              errorMessage = data.message;
+          }
+        }
+        
         toast({
-          title: "Erro",
-          description: data?.message || "Código incorreto",
+          title: "Erro na verificação",
+          description: errorMessage,
           variant: "destructive"
         });
       }
     } catch (error: any) {
       console.error('[DEBUG] Error in handleVerifyCode:', error);
+      
+      let errorMessage = "Erro desconhecido na verificação";
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Erro ao desbloquear card",
-        description: error.message || 'Erro desconhecido na verificação',
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
