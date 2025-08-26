@@ -82,18 +82,47 @@ serve(async (req) => {
       auth: { persistSession: false } 
     });
 
-    // For now, we'll implement a simple verification
-    // In a production environment, you'd want to store and verify codes in the database
-    // This is a simplified version that accepts any 6-digit code
+    // Call the database function to verify code and reserve card
+    logStep("Calling verify_unlock_code_and_reveal function", { email, eventId, cardNumber });
     
-    logStep("Code verification successful", { email, cardNumber });
+    const { data, error } = await supabaseClient.rpc('verify_unlock_code_and_reveal', {
+      _email: email,
+      _event_id: eventId,
+      _card_number: cardNumber,
+      _unlock_code: unlockCode
+    });
+
+    if (error) {
+      logStep("Database function error", { error: error.message });
+      throw new Error(`Database error: ${error.message}`);
+    }
+
+    logStep("Database function result", { data });
+
+    if (!data || data.length === 0) {
+      throw new Error("No result from verification function");
+    }
+
+    const result = data[0];
+    
+    if (!result.success) {
+      logStep("Verification failed", { message: result.message });
+      throw new Error(result.message);
+    }
+
+    logStep("Code verification and card reservation successful", { 
+      email, 
+      cardNumber, 
+      cardValue: result.card_value 
+    });
 
     // Return success response
     const successResponse = {
       success: true,
-      message: "Código verificado com sucesso!",
+      message: result.message,
       email,
-      cardNumber
+      cardNumber,
+      cardValue: result.card_value
     };
 
     logStep("Returning success response");
