@@ -168,9 +168,14 @@ export const UnlockCodeModal = ({
         // Reabilitar reenvio após 60 segundos
         setTimeout(() => setCanResend(true), 60000);
         
+        // Mensagem diferenciada para cards reservados
+        const isReservedCardMessage = data.message && data.message.includes('já reservado');
+        
         toast({
-          title: "Código enviado!",
-          description: `Um código de 6 dígitos foi enviado para ${email}`,
+          title: isReservedCardMessage ? "Card já reservado!" : "Código enviado!",
+          description: isReservedCardMessage 
+            ? data.message
+            : `Um código de 6 dígitos foi enviado para ${email}`,
         });
       } else {
         // Resposta inesperada
@@ -260,6 +265,15 @@ export const UnlockCodeModal = ({
       // Sucesso
       if (data && data.success) {
         console.log('✅ Código verificado com sucesso!');
+        
+        // Para cards já reservados, disparar novo código automaticamente
+        if (isReservedCard && reservedEmail && email.toLowerCase().trim() === reservedEmail.toLowerCase().trim()) {
+          // Gerar e enviar novo código automaticamente
+          setTimeout(() => {
+            handleSendCode();
+          }, 1000);
+        }
+        
         toast({
           title: "Card desbloqueado!",
           description: data.message || "Agora você pode prosseguir com a contribuição",

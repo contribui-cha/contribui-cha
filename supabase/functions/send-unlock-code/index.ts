@@ -121,12 +121,93 @@ serve(async (req) => {
           })
           .eq('id', card.id);
       } else if (card.guest_email === email) {
-        // Card reservado para o mesmo email - permitir
-        console.log('✅ Card já reservado para este email, permitindo acesso');
+        // Card reservado para o mesmo email - SEMPRE gerar novo código
+        console.log('✅ Card já reservado para este email, gerando novo código');
+        
+        // Generate new 6-digit unlock code
+        const unlockCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+        // Update unlock code in database
+        const { error: updateError } = await supabase
+          .from('cards')
+          .update({ unlock_code: unlockCode })
+          .eq('id', card.id);
+
+        if (updateError) {
+          console.error('❌ ERRO in send-unlock-code: Falha ao salvar novo código');
+          return new Response(
+            JSON.stringify({ success: false, message: 'Falha ao gerar novo código' }),
+            { 
+              status: 200,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        }
+
+        // Prepare email content for reserved card
+        const emailContent = {
+          from: "Contribui&Chá <noreply@contribuicha.com.br>",
+          to: [email],
+          subject: `Novo código de desbloqueio - ${eventName}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #9E7FFF; margin: 0;">Contribui&Chá</h1>
+              </div>
+              
+              <div style="background: linear-gradient(135deg, #9E7FFF, #38bdf8); color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 30px;">
+                <h2 style="margin: 0 0 10px 0;">Novo Código de Desbloqueio</h2>
+                <p style="margin: 0; opacity: 0.9;">Card #${cardNumber} - ${eventName}</p>
+              </div>
+
+              <div style="background: #EBF8FF; border: 1px solid #3182CE; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <p style="margin: 0; color: #2C5282; font-size: 14px;">
+                  <strong>✅ Card já reservado para você!</strong><br>
+                  Complete sua contribuição em até 24 horas.
+                </p>
+              </div>
+
+              <div style="text-align: center; margin-bottom: 30px;">
+                <div style="background: #F3F4F6; padding: 20px; border-radius: 8px; display: inline-block;">
+                  <div style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #1F2937; font-family: monospace;">
+                    ${unlockCode}
+                  </div>
+                </div>
+              </div>
+
+              <div style="text-align: center; margin-bottom: 30px;">
+                <p style="color: #6B7280; margin: 0;">Digite este código para acessar sua contribuição reservada.</p>
+              </div>
+
+              <div style="border-top: 1px solid #E5E7EB; padding-top: 20px; text-align: center;">
+                <p style="color: #9CA3AF; font-size: 12px; margin: 0;">
+                  Se você não solicitou este código, pode ignorar este email.
+                </p>
+              </div>
+            </div>
+          `,
+        };
+
+        // Initialize Resend and send email
+        const resendApiKey = Deno.env.get("RESEND_API_KEY");
+        if (!resendApiKey) {
+          throw new Error("Serviço de email não configurado");
+        }
+
+        const resend = new Resend(resendApiKey);
+        const emailResponse = await resend.emails.send(emailContent);
+        
+        if (emailResponse.error) {
+          console.error("Erro do serviço de email:", emailResponse.error.message);
+          throw new Error(`Erro no serviço de email: ${emailResponse.error.message}`);
+        }
+
         return new Response(
           JSON.stringify({ 
             success: true, 
-            message: 'Card já reservado para você! Complete sua contribuição em até 24 horas.' 
+            unlockCode: unlockCode,
+            message: "Novo código enviado! Card já reservado para você.",
+            messageId: emailResponse.data?.id
           }),
           { 
             status: 200,

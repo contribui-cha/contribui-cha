@@ -342,7 +342,7 @@ const PublicEvent = () => {
           {event.date && (
             <div className="flex items-center justify-center gap-2 mt-4">
               <Calendar className="w-5 h-5" style={{ color: event.theme_color }} />
-              <span className="font-medium">
+              <span className="font-bold" style={{ color: event.theme_color }}>
                 {new Date(event.date).toLocaleDateString('pt-BR')}
               </span>
             </div>
@@ -353,16 +353,16 @@ const PublicEvent = () => {
         <Card className="mb-8">
           <CardContent className="p-6">
             <div className="flex items-center gap-2 mb-4">
-              <Target className="w-5 h-5" />
-              <h3 className="text-lg font-semibold">Progresso da Arrecadação</h3>
+              <Target className="w-5 h-5" style={{ color: event.theme_color }} />
+              <h3 className="text-lg font-bold" style={{ color: event.theme_color }}>Progresso da Arrecadação</h3>
             </div>
             <div className="space-y-4">
               <Progress value={progressPercentage} className="h-3" />
-              <div className="flex justify-between text-base font-semibold">
-                <span>R$ {(totalRaised / 100).toFixed(2)}</span>
-                <span>Meta: R$ {(event.goal_amount / 100).toFixed(2)}</span>
+              <div className="flex justify-between text-base font-bold">
+                <span style={{ color: event.theme_color }}>R$ {(totalRaised / 100).toFixed(2)}</span>
+                <span style={{ color: event.theme_color }}>Meta: R$ {(event.goal_amount / 100).toFixed(2)}</span>
               </div>
-              <p className="text-center text-muted-foreground font-medium text-base">
+              <p className="text-center text-muted-foreground font-bold text-base" style={{ color: event.theme_color }}>
                 {progressPercentage.toFixed(1)}% da meta alcançada
               </p>
             </div>
@@ -373,10 +373,10 @@ const PublicEvent = () => {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2 mb-4">
-              <Gift className="w-5 h-5" />
-              <h3 className="text-lg font-semibold">Escolha seu Card de Contribuição</h3>
+              <Gift className="w-5 h-5" style={{ color: event.theme_color }} />
+              <h3 className="text-lg font-bold" style={{ color: event.theme_color }}>Escolha seu Card de Contribuição</h3>
             </div>
-            <p className="text-muted-foreground mb-6">
+            <p className="text-muted-foreground mb-6 font-bold" style={{ color: event.theme_color }}>
               Clique em um card disponível para contribuir
             </p>
             
