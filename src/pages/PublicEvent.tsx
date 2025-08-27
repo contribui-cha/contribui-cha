@@ -180,15 +180,20 @@ const PublicEvent = () => {
     }
   };
 
-  const handleUnlockSuccess = () => {
+  const handleUnlockSuccess = (cardValue?: number, email?: string) => {
     setShowUnlockModal(false);
     
     // Immediately open contribute modal with the pending card
     if (pendingCard) {
-      setSelectedCard(pendingCard);
+      // Update selected card with the correct value from the unlock response
+      const updatedCard = {
+        ...pendingCard,
+        value: cardValue || pendingCard.value
+      };
+      setSelectedCard(updatedCard);
       setGuestInfo(prev => ({ 
         ...prev, 
-        email: '' // User will enter their email in the contribute modal
+        email: email || '' // Use email from unlock if provided
       }));
       setShowContributeModal(true);
       setPendingCard(null);

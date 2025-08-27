@@ -18,7 +18,7 @@ import { Mail, Lock, RefreshCw } from "lucide-react";
 interface UnlockCodeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (cardValue?: number, email?: string) => void;
   cardNumber: number;
   eventName: string;
   eventId: number;
@@ -265,7 +265,7 @@ export const UnlockCodeModal = ({
           description: data.message || "Agora você pode prosseguir com a contribuição",
         });
 
-        onSuccess();
+        onSuccess(data.cardValue, email);
         handleClose();
       } else {
         // Resposta inesperada
