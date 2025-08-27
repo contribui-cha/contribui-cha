@@ -149,10 +149,10 @@ export const UnlockCodeModal = ({
 
       // Verificar se a resposta indica erro no business logic
       if (data && !data.success) {
-        console.error('❌ Erro de negócio:', data.error);
+        console.error('❌ Erro de negócio:', data.message || data.error);
         toast({
-          title: "Erro ao enviar código",
-          description: data.error || "Falha ao enviar código",
+          title: "Erro",
+          description: data.message || data.error || "Falha ao enviar código",
           variant: "destructive"
         });
         return;
@@ -250,7 +250,7 @@ export const UnlockCodeModal = ({
       if (data && !data.success) {
         console.error('❌ Erro de negócio na verificação:', data.message);
         toast({
-          title: "Erro na verificação",
+          title: "Erro",
           description: data.message || "Código inválido",
           variant: "destructive"
         });
