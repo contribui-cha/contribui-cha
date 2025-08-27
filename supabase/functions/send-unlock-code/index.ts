@@ -74,24 +74,88 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify card exists and is available
-    const { data: cardData, error: cardError } = await supabase
+    // Buscar card específico
+    const { data: card, error: cardError } = await supabase
       .from('cards')
-      .select('id, status, event_id')
+      .select('id, status, guest_email, reserved_until')
       .eq('event_id', eventId)
       .eq('card_number', cardNumber)
       .single();
 
-    if (cardError) {
-      throw new Error("Card não encontrado");
+    if (cardError || !card) {
+      console.error('❌ ERRO in send-unlock-code: Card não encontrado');
+      return new Response(
+        JSON.stringify({ success: false, message: 'Card não encontrado' }),
+        { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
-    if (!cardData) {
-      throw new Error("Card não encontrado");
+    // Verificar status do card
+    if (card.status === 'revealed') {
+      console.error('❌ ERRO in send-unlock-code: Card já foi revelado');
+      return new Response(
+        JSON.stringify({ success: false, message: 'Card já foi revelado' }),
+        { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
-    if (cardData.status !== 'available') {
-      throw new Error("Card não está disponível para desbloqueio");
+    // Se card está reservado
+    if (card.status === 'reserved') {
+      // Verificar se reserva expirou
+      if (card.reserved_until && new Date(card.reserved_until) < new Date()) {
+        console.log('🔄 Card reservation expired, resetting to available');
+        // Resetar card para disponível
+        await supabase
+          .from('cards')
+          .update({ 
+            status: 'available', 
+            guest_email: null, 
+            reserved_until: null,
+            unlock_code: null 
+          })
+          .eq('id', card.id);
+      } else if (card.guest_email === email) {
+        // Card reservado para o mesmo email - permitir
+        console.log('✅ Card já reservado para este email, permitindo acesso');
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: 'Card já reservado para você! Complete sua contribuição em até 24 horas.' 
+          }),
+          { 
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      } else {
+        // Card reservado para outro email
+        console.error('❌ ERRO in send-unlock-code: Card reservado para outro usuário');
+        return new Response(
+          JSON.stringify({ success: false, message: 'Card está reservado por outro usuário' }),
+          { 
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+    }
+
+    // Se chegou aqui, card deve estar disponível ou foi resetado
+    if (card.status !== 'available' && card.status !== 'reserved') {
+      console.error('❌ ERRO in send-unlock-code: Card não está disponível');
+      return new Response(
+        JSON.stringify({ success: false, message: 'Card não está disponível para desbloqueio' }),
+        { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     // Generate 6-digit unlock code
@@ -101,10 +165,17 @@ serve(async (req) => {
     const { error: updateError } = await supabase
       .from('cards')
       .update({ unlock_code: unlockCode })
-      .eq('id', cardData.id);
+      .eq('id', card.id);
 
     if (updateError) {
-      throw new Error("Falha ao salvar código de desbloqueio");
+      console.error('❌ ERRO in send-unlock-code: Falha ao salvar código de desbloqueio');
+      return new Response(
+        JSON.stringify({ success: false, message: 'Falha ao salvar código de desbloqueio' }),
+        { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     // Prepare email content

@@ -25,9 +25,33 @@ const CreateEvent = () => {
   const { toast } = useToast();
 
   // Currency masks
-  const goalAmount = useCurrencyMask(1000);
-  const minValue = useCurrencyMask(10);
+  const goalAmount = useCurrencyMask(1500);
+  const minValue = useCurrencyMask(20);
   const maxValue = useCurrencyMask(100);
+
+  // Validação matemática em tempo real
+  const getValidationMessage = () => {
+    const minTotal = minValue.value * formData.num_cards;
+    const maxTotal = maxValue.value * formData.num_cards;
+    
+    if (minTotal > goalAmount.value) {
+      return {
+        isValid: false,
+        message: `Impossível: Valor mínimo (R$ ${minValue.value.toFixed(2)}) × ${formData.num_cards} cards = R$ ${minTotal.toFixed(2)} é maior que a meta (R$ ${goalAmount.value.toFixed(2)})`
+      };
+    }
+    
+    if (maxTotal < goalAmount.value) {
+      return {
+        isValid: false,
+        message: `Impossível: Valor máximo (R$ ${maxValue.value.toFixed(2)}) × ${formData.num_cards} cards = R$ ${maxTotal.toFixed(2)} é menor que a meta (R$ ${goalAmount.value.toFixed(2)})`
+      };
+    }
+    
+    return { isValid: true, message: '' };
+  };
+
+  const validation = getValidationMessage();
 
   // Pricing plans
   const plans = [
@@ -81,6 +105,16 @@ const CreateEvent = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    // Validação antes de submeter
+    if (!validation.isValid) {
+      toast({
+        title: "Configuração inválida",
+        description: validation.message,
+        variant: "destructive"
+      });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -272,6 +306,37 @@ const CreateEvent = () => {
                 </div>
               </div>
 
+              {/* Validação matemática visual */}
+              {!validation.isValid && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <div className="w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-bold mt-0.5">!</div>
+                    <div>
+                      <h4 className="font-semibold text-red-800">Configuração Impossível</h4>
+                      <p className="text-red-700 text-sm mt-1">{validation.message}</p>
+                      <p className="text-red-600 text-xs mt-2">
+                        Ajuste os valores para que seja matematicamente possível atingir a meta.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {validation.isValid && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <div className="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold mt-0.5">✓</div>
+                    <div>
+                      <h4 className="font-semibold text-green-800">Configuração Válida</h4>
+                      <p className="text-green-700 text-sm mt-1">
+                        Meta de R$ {goalAmount.value.toFixed(2)} será distribuída entre {formData.num_cards} cards 
+                        com valores entre R$ {minValue.value.toFixed(2)} e R$ {maxValue.value.toFixed(2)}.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="theme_color">Cor do Tema</Label>
                 <Input
@@ -283,7 +348,11 @@ const CreateEvent = () => {
                 />
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={loading || !validation.isValid}
+              >
                 {loading ? 'Processando...' : `Criar Evento - ${(getCurrentPlan().price / 100).toFixed(2).replace('.', ',')} R$`}
               </Button>
             </form>
