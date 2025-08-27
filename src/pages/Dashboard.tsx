@@ -16,6 +16,7 @@ import {
   LogOut,
   Trash2
 } from 'lucide-react';
+import logoWhite from '@/assets/logo-white.png';
 import { supabase } from '@/integrations/supabase/client';
 import { PageLoader } from '@/components/PageLoader';
 import {
@@ -259,7 +260,9 @@ const Dashboard = () => {
       <header className="bg-background/80 backdrop-blur border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <Heart className="w-8 h-8 text-primary" />
+            <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+              <img src={logoWhite} alt="Contribui&Chá" className="w-5 h-5" />
+            </div>
             <h1 className="text-2xl font-bold text-primary">Contribui&Chá</h1>
           </div>
           <div className="flex items-center gap-4">

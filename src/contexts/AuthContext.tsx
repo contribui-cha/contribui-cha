@@ -11,6 +11,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<{ error: any }>;
+  resetPassword: (email: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -66,13 +67,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (error) {
       toast({
         title: "Erro no cadastro",
-        description: error.message,
+        description: getErrorMessage(error.message),
         variant: "destructive"
       });
     } else {
       toast({
-        title: "Cadastro realizado!",
-        description: "Verifique seu email para confirmar a conta."
+        title: "Cadastro realizado com sucesso!",
+        description: "Verifique seu email para confirmar sua conta."
       });
     }
 
@@ -87,9 +88,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (error) {
       toast({
-        title: "Erro no login",
-        description: error.message,
+        title: "Erro ao fazer login",
+        description: getErrorMessage(error.message),
         variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Login realizado com sucesso!",
+        description: "Bem-vindo de volta!"
       });
     }
 
@@ -100,9 +106,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error } = await supabase.auth.signOut();
     if (error) {
       toast({
-        title: "Erro ao sair",
-        description: error.message,
+        title: "Erro ao fazer logout",
+        description: getErrorMessage(error.message),
         variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Logout realizado com sucesso!",
+        description: "Até logo!"
       });
     }
   };
@@ -113,16 +124,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         toast({
-          title: "Erro ao deletar conta",
-          description: error.message,
+          title: "Erro ao excluir conta",
+          description: getErrorMessage(error.message),
           variant: "destructive"
         });
         return { error };
       }
 
       toast({
-        title: "Conta deletada",
-        description: "Sua conta foi deletada com sucesso.",
+        title: "Conta excluída com sucesso!",
+        description: "Sua conta foi removida permanentemente."
       });
 
       // Sign out after successful deletion
@@ -131,12 +142,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { error: null };
     } catch (error: any) {
       toast({
-        title: "Erro ao deletar conta",
-        description: "Erro inesperado ao deletar conta",
+        title: "Erro ao excluir conta",
+        description: "Ocorreu um erro inesperado. Tente novamente.",
         variant: "destructive"
       });
       return { error };
     }
+  };
+
+  const resetPassword = async (email: string) => {
+    const redirectUrl = `${window.location.origin}/auth?reset=true`;
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl
+    });
+
+    if (error) {
+      toast({
+        title: "Erro ao enviar email",
+        description: getErrorMessage(error.message),
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Email enviado com sucesso!",
+        description: "Verifique sua caixa de entrada para redefinir sua senha."
+      });
+    }
+
+    return { error };
+  };
+
+  // Helper function to translate error messages to Portuguese
+  const getErrorMessage = (errorMessage: string) => {
+    const errorMap: { [key: string]: string } = {
+      'Invalid login credentials': 'Email ou senha incorretos',
+      'User already registered': 'Este email já está cadastrado',
+      'Email not confirmed': 'Email não confirmado. Verifique sua caixa de entrada',
+      'Invalid email': 'Email inválido',
+      'Password should be at least 6 characters': 'A senha deve ter pelo menos 6 caracteres',
+      'Signup is disabled': 'Cadastro desabilitado',
+      'Too many requests': 'Muitas tentativas. Tente novamente mais tarde',
+      'Invalid refresh token': 'Sessão expirada. Faça login novamente',
+      'Email rate limit exceeded': 'Limite de emails excedido. Tente novamente mais tarde'
+    };
+
+    return errorMap[errorMessage] || errorMessage;
   };
 
   const value = {
@@ -146,7 +197,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signIn,
     signOut,
-    deleteAccount
+    deleteAccount,
+    resetPassword
   };
 
   return (

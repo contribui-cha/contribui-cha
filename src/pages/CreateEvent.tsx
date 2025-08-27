@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrencyMask } from '@/hooks/useCurrencyMask';
-import { Calendar, Gift, Users, DollarSign, CreditCard } from 'lucide-react';
+import { Calendar, Gift, Users, DollarSign, CreditCard, ArrowLeft } from 'lucide-react';
 
 const CreateEvent = () => {
   const [formData, setFormData] = useState({
@@ -171,6 +171,18 @@ const CreateEvent = () => {
   return (
     <div className="min-h-screen" style={{ background: 'var(--gradient-primary)' }}>
       <div className="max-w-2xl mx-auto p-4">
+        {/* Back Button */}
+        <div className="mb-4">
+          <Button 
+            variant="ghost" 
+            className="text-white hover:bg-white/10"
+            onClick={() => navigate('/dashboard')}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar ao Dashboard
+          </Button>
+        </div>
+        
         <div className="text-center mb-8 text-white">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4">
             <Gift className="w-8 h-8" />
@@ -247,6 +259,7 @@ const CreateEvent = () => {
                     type="date"
                     value={formData.date}
                     onChange={(e) => handleChange('date', e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
                   />
                 </div>
               </div>

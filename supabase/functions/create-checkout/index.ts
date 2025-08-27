@@ -109,15 +109,15 @@ serve(async (req) => {
         throw new Error(`Card not found or may have been deleted. Card ID: ${card_id}`);
       }
 
-      // Check if card is available for reservation
-      if (card.status !== 'available') {
-        logStep('Card not available', { cardId: card_id, status: card.status });
+      // Check if card is available for reservation or reserved for the same email
+      if (card.status !== 'available' && !(card.status === 'reserved' && card.guest_email === guest_email)) {
+        logStep('Card not available', { cardId: card_id, status: card.status, guest_email: card.guest_email });
         throw new Error(`Card is not available for contribution. Current status: ${card.status}`);
       }
 
       logStep("Card found and available", { cardId: card_id, cardValue: card.value, status: card.status });
 
-      // Update card status to reserved
+      // Update card status to reserved (only if it's available or already reserved for same email)
       const { error: updateError } = await supabaseClient
         .from('cards')
         .update({ 
@@ -126,7 +126,7 @@ serve(async (req) => {
           guest_email: guest_email || 'guest@example.com'
         })
         .eq('id', card_id)
-        .eq('status', 'available');
+        .or(`status.eq.available,and(status.eq.reserved,guest_email.eq.${guest_email})`);
 
       if (updateError) throw new Error(`Failed to reserve card: ${updateError.message}`);
       logStep("Card reserved", { cardId: card_id });

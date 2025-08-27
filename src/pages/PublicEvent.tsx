@@ -225,8 +225,29 @@ const PublicEvent = () => {
     setPendingCard(null);
   };
 
-  // For public events, assume user is not the host since we don't expose host_id
-  const isEventHost = false;
+  // Check if current user is the event host by comparing user id with host_id
+  const [isEventHost, setIsEventHost] = useState(false);
+  
+  useEffect(() => {
+    const checkIfHost = async () => {
+      if (user && event) {
+        try {
+          const { data: eventWithHost } = await supabase
+            .from('events')
+            .select('host_id')
+            .eq('id', event.id)
+            .single();
+          
+          setIsEventHost(eventWithHost?.host_id === user.id);
+        } catch (error) {
+          // Silently fail - assume not host
+          setIsEventHost(false);
+        }
+      }
+    };
+    
+    checkIfHost();
+  }, [user, event]);
 
   const handleContribute = async () => {
     if (!selectedCard || !event || !guestInfo.name || !guestInfo.email) {
@@ -240,16 +261,9 @@ const PublicEvent = () => {
 
     setSubmitting(true);
     try {
-      // Save message if provided
-      if (guestInfo.message) {
-        await supabase.from('messages').insert({
-          event_id: event.id,
-          guest_name: guestInfo.name,
-          guest_email: guestInfo.email,
-          message: guestInfo.message
-        });
-      }
-
+      // Store message temporarily - will be saved only after payment confirmation
+      const messageToSave = guestInfo.message;
+      
       // Call Stripe checkout edge function
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
@@ -257,7 +271,8 @@ const PublicEvent = () => {
           event_id: event.id,
           amount: selectedCard.value || 1000, // Default minimum value
           guest_name: guestInfo.name,
-          guest_email: guestInfo.email
+          guest_email: guestInfo.email,
+          message: messageToSave // Pass message to be saved after payment
         }
       });
 
@@ -350,19 +365,33 @@ const PublicEvent = () => {
         </div>
 
         {/* Progress Section */}
-        <Card className="mb-8">
+        <Card 
+          className="mb-8 border-2" 
+          style={{ 
+            backgroundColor: `${event.theme_color}15`,
+            borderColor: `${event.theme_color}30`
+          }}
+        >
           <CardContent className="p-6">
             <div className="flex items-center gap-2 mb-4">
-              <Target className="w-5 h-5" style={{ color: event.theme_color }} />
-              <h3 className="text-lg font-bold" style={{ color: event.theme_color }}>Progresso da Arrecadação</h3>
+              <Target className="w-5 h-5 text-white" />
+              <h3 className="text-lg font-bold text-white">Progresso da Arrecadação</h3>
             </div>
             <div className="space-y-4">
-              <Progress value={progressPercentage} className="h-3" />
-              <div className="flex justify-between text-base font-bold">
-                <span style={{ color: event.theme_color }}>R$ {(totalRaised / 100).toFixed(2)}</span>
-                <span style={{ color: event.theme_color }}>Meta: R$ {(event.goal_amount / 100).toFixed(2)}</span>
+              <div className="w-full bg-white/30 rounded-full h-3">
+                <div 
+                  className="h-3 rounded-full transition-all duration-300"
+                  style={{ 
+                    width: `${progressPercentage}%`,
+                    background: `linear-gradient(90deg, white, ${event.theme_color})`
+                  }}
+                />
               </div>
-              <p className="text-center text-muted-foreground font-bold text-base" style={{ color: event.theme_color }}>
+              <div className="flex justify-between text-base font-bold text-white">
+                <span>R$ {(totalRaised / 100).toFixed(2)}</span>
+                <span>Meta: R$ {(event.goal_amount / 100).toFixed(2)}</span>
+              </div>
+              <p className="text-center font-bold text-base text-white/90">
                 {progressPercentage.toFixed(1)}% da meta alcançada
               </p>
             </div>
@@ -401,9 +430,9 @@ const PublicEvent = () => {
                    {card.status === 'available' && (
                      <div className="text-center">
                        <div>{card.card_number}</div>
-                       {card.value && (
-                         <div className="text-xs">R$ {(card.value / 100).toFixed(2)}</div>
-                       )}
+                        {card.value && (
+                          <div className="text-xs">R$ {(card.value / 100).toFixed(2)}</div>
+                        )}
                      </div>
                    )}
                   {card.status === 'reserved' && <Lock className="w-4 h-4" />}

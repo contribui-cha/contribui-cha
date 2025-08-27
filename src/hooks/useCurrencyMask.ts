@@ -21,11 +21,26 @@ export const useCurrencyMask = (initialValue: number = 0) => {
   const [maskedValue, setMaskedValue] = useState(formatCurrency(initialValue));
 
   const handleChange = useCallback((inputValue: string) => {
-    // Remove all non-numeric characters except comma and dots
+    // Allow user to clear the field completely
+    if (inputValue === '') {
+      setValue(0);
+      setMaskedValue('R$ 0,00');
+      return;
+    }
+    
+    // Remove all non-numeric characters except comma
     const cleanValue = inputValue.replace(/[^\d,]/g, '');
     
+    // Prevent multiple commas and ensure format
+    const parts = cleanValue.split(',');
+    let processedValue = parts[0];
+    if (parts.length > 1) {
+      // Only keep first two decimal places
+      processedValue += ',' + parts[1].substring(0, 2);
+    }
+    
     // Convert to number (treating comma as decimal separator)
-    const numericValue = parseFloat(cleanValue.replace(',', '.')) || 0;
+    const numericValue = parseFloat(processedValue.replace(',', '.')) || 0;
     
     setValue(numericValue);
     setMaskedValue(formatCurrency(numericValue));
