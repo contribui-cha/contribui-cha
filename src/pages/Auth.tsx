@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff, Heart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import logoWhite from '@/assets/logo-white.png';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -86,7 +85,7 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4 text-center">
           <div className="mx-auto w-16 h-16 bg-primary rounded-full flex items-center justify-center">
-            <img src={logoWhite} alt="Contribui&Chá" className="w-10 h-10" />
+            <Heart className="w-8 h-8 text-primary-foreground" />
           </div>
           <div>
             <CardTitle className="text-2xl font-bold">Contribui&Chá</CardTitle>
