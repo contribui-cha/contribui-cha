@@ -185,16 +185,41 @@ const Dashboard = () => {
   const handleDeleteEvent = async (eventId: number) => {
     setDeletingEvent(eventId);
     try {
-      const { error } = await supabase
-        .from('events')
-        .delete()
-        .eq('id', eventId);
+      // Use the cleanup edge function for proper data cleanup
+      const { error: cleanupError } = await supabase.functions.invoke('cleanup-event-data', {
+        body: { event_id: eventId }
+      });
 
-      if (error) throw error;
+      if (cleanupError) {
+        console.error('Cleanup function error:', cleanupError);
+        // Fallback to direct deletion if cleanup function fails
+        const { error: directError } = await supabase
+          .from('events')
+          .delete()
+          .eq('id', eventId);
+          
+        if (directError) throw directError;
+      }
+
+      // Clean localStorage for this event
+      const cleanEventFromLocalStorage = (eventId: string | number) => {
+        const keys = Object.keys(localStorage);
+        const eventCacheKeys = ['event_', 'cards_', 'unlock_modal_', 'guest_form_', 'payment_session_'];
+        
+        keys.forEach(key => {
+          eventCacheKeys.forEach(prefix => {
+            if (key.startsWith(prefix) && key.includes(eventId.toString())) {
+              localStorage.removeItem(key);
+            }
+          });
+        });
+      };
+      
+      cleanEventFromLocalStorage(eventId);
 
       toast({
         title: "Evento excluído",
-        description: "O evento foi excluído com sucesso.",
+        description: "O evento foi excluído com sucesso junto com todos os dados relacionados.",
       });
 
       // Refresh events list

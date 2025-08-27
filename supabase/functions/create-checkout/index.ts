@@ -90,16 +90,32 @@ serve(async (req) => {
       if (eventError) throw new Error(`Event not found: ${eventError.message}`);
       logStep("Event found", { eventId: event.id, eventName: event.name });
 
-      // Get card details first
-      const { data: card, error: cardError } = await supabaseClient
+      // Get card details with improved error handling
+      let card, cardError;
+      
+      // First try to get card by ID
+      const cardResult = await supabaseClient
         .from('cards')
         .select('*')
         .eq('id', card_id)
-        .eq('status', 'available')
         .single();
 
-      if (cardError) throw new Error(`Card not found or not available: ${cardError.message}`);
-      logStep("Card found", { cardId: card_id, cardValue: card.value });
+      card = cardResult.data;
+      cardError = cardResult.error;
+
+      // If card not found, provide more detailed error
+      if (cardError || !card) {
+        logStep('Card lookup failed', { card_id, error: cardError?.message });
+        throw new Error(`Card not found or may have been deleted. Card ID: ${card_id}`);
+      }
+
+      // Check if card is available for reservation
+      if (card.status !== 'available') {
+        logStep('Card not available', { cardId: card_id, status: card.status });
+        throw new Error(`Card is not available for contribution. Current status: ${card.status}`);
+      }
+
+      logStep("Card found and available", { cardId: card_id, cardValue: card.value, status: card.status });
 
       // Update card status to reserved
       const { error: updateError } = await supabaseClient
