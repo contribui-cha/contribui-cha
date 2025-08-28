@@ -150,41 +150,65 @@ serve(async (req) => {
           to: [email],
           subject: `Novo código de desbloqueio - ${eventName}`,
           html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <div style="text-align: center; margin-bottom: 30px;">
-                <h1 style="color: #9E7FFF; margin: 0;">Contribui&Chá</h1>
-              </div>
-              
-              <div style="background: linear-gradient(135deg, #9E7FFF, #38bdf8); color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 30px;">
-                <h2 style="margin: 0 0 10px 0;">Novo Código de Desbloqueio</h2>
-                <p style="margin: 0; opacity: 0.9;">Card #${cardNumber} - ${eventName}</p>
-              </div>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
+        
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #9E7FFF; margin: 0;">Contribui&Chá</h1>
+        </div>
+        
+        <div style="background: #4C1D95; 
+                    background: linear-gradient(135deg, #9E7FFF, #38bdf8); 
+                    color: white; 
+                    padding: 30px; 
+                    border-radius: 12px; 
+                    text-align: center; 
+                    margin-bottom: 30px;">
+                    
+          <h2 style="margin: 0 0 10px 0;
+                    background-color: rgba(0,0,0,0.4); 
+                    display: inline-block; 
+                    padding: 6px 14px; 
+                    border-radius: 6px;">
+            Código de Desbloqueio
+          </h2>
 
-              <div style="background: #EBF8FF; border: 1px solid #3182CE; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <p style="margin: 0; color: #2C5282; font-size: 14px;">
-                  <strong>✅ Card já reservado para você!</strong><br>
-                  Complete sua contribuição em até 24 horas.
-                </p>
-              </div>
+          <p style="margin: 15px 0 0 0; 
+                    background-color: rgba(0,0,0,0.35); 
+                    display: inline-block; 
+                    padding: 4px 10px; 
+                    border-radius: 4px; 
+                    font-size: 14px;">
+            Card #${cardNumber} - ${eventName}
+          </p>
+        </div>
 
-              <div style="text-align: center; margin-bottom: 30px;">
-                <div style="background: #F3F4F6; padding: 20px; border-radius: 8px; display: inline-block;">
-                  <div style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #1F2937; font-family: monospace;">
-                    ${unlockCode}
-                  </div>
-                </div>
-              </div>
-
-              <div style="text-align: center; margin-bottom: 30px;">
-                <p style="color: #6B7280; margin: 0;">Digite este código para acessar sua contribuição reservada.</p>
-              </div>
-
-              <div style="border-top: 1px solid #E5E7EB; padding-top: 20px; text-align: center;">
-                <p style="color: #9CA3AF; font-size: 12px; margin: 0;">
-                  Se você não solicitou este código, pode ignorar este email.
-                </p>
-              </div>
+        <div style="text-align: center; margin-bottom: 30px;">
+          <div style="background: #F3F4F6; padding: 20px; border-radius: 8px; display: inline-block;">
+            <div style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #1F2937; font-family: monospace;">
+              ${unlockCode}
             </div>
+          </div>
+        </div>
+
+        <div style="background: #FEF3C7; border: 1px solid #F59E0B; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+          <p style="margin: 0; color: #92400E; font-size: 14px;">
+            <strong>⚠️ Importante:</strong> Este código é válido apenas para você. Não compartilhe com outras pessoas.
+          </p>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 30px;">
+          <p style="color: #374151; margin: 0; background-color: rgba(255,255,255,0.9); display: inline-block; padding: 6px 12px; border-radius: 6px;">
+            Digite este código para desbloquear seu card e fazer a contribuição.
+          </p>
+        </div>
+
+        <div style="border-top: 1px solid #E5E7EB; padding-top: 20px; text-align: center;">
+          <p style="color: #6B7280; font-size: 12px; margin: 0; background-color: rgba(255,255,255,0.9); display: inline-block; padding: 4px 8px; border-radius: 4px;">
+            Se você não solicitou este código, pode ignorar este email.
+          </p>
+        </div>
+
+      </div>
           `,
         };
 
