@@ -80,6 +80,13 @@ serve(async (req) => {
         throw new Error("Invalid amount: must be positive");
       }
 
+      // Transaction fee of R$ 1.99 (199 cents)
+      const transactionFee = 199;
+      const cardValue = amount;
+      const totalCharged = cardValue + transactionFee;
+      
+      logStep("Payment calculation", { cardValue, transactionFee, totalCharged });
+
       // Get event details
       const { data: event, error: eventError } = await supabaseClient
         .from('events')
@@ -131,7 +138,10 @@ serve(async (req) => {
       if (updateError) throw new Error(`Failed to reserve card: ${updateError.message}`);
       logStep("Card reserved", { cardId: card_id });
 
-      // Create checkout session using the card's value
+      // Create checkout session with total amount (card value + transaction fee)
+      const cardValueForPayment = card.value || event.min_value;
+      const totalAmountForPayment = cardValueForPayment + transactionFee;
+      
       const session = await stripe.checkout.sessions.create({
         customer_email: guest_email || 'guest@example.com',
         line_items: [
@@ -140,9 +150,9 @@ serve(async (req) => {
               currency: "brl",
               product_data: { 
                 name: `Contribuição - ${event.name}`,
-                description: `Card #${card.card_number}` 
+                description: `Card #${card.card_number} (R$ ${(cardValueForPayment/100).toFixed(2)}) + Taxa de processamento (R$ 1,99)` 
               },
-              unit_amount: card.value || event.min_value,
+              unit_amount: totalAmountForPayment,
             },
             quantity: 1,
           },
@@ -154,19 +164,23 @@ serve(async (req) => {
           type: 'card_contribution',
           card_id: card_id.toString(),
           event_id: event_id.toString(),
-          amount: (card.value || event.min_value).toString()
+          amount: cardValueForPayment.toString(),
+          transaction_fee: transactionFee.toString(),
+          total_charged: totalAmountForPayment.toString()
         }
       });
 
       logStep("Checkout session created", { sessionId: session.id });
 
-      // Create payment record
+      // Create payment record with transaction fee breakdown
       const { error: paymentError } = await supabaseClient
         .from('payments')
         .insert({
           card_id,
           event_id,
-          amount: card.value || event.min_value,
+          amount: cardValueForPayment, // Original card value (for goal calculation)
+          transaction_fee: transactionFee, // R$ 1.99 processing fee
+          total_charged: totalAmountForPayment, // Total amount charged to customer
           guest_email: guest_email || 'guest@example.com',
           stripe_session_id: session.id,
           status: 'pending'

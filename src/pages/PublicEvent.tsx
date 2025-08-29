@@ -556,11 +556,37 @@ const PublicEvent = () => {
             </DialogHeader>
             
             <div className="space-y-4">
-              <div className="text-center p-4 bg-muted/50 rounded-lg">
-                <p className="text-sm text-muted-foreground">Valor da contribuição</p>
-                 <p className="text-2xl font-bold">
-                   R$ {((selectedCard?.value || 1000) / 100).toFixed(2)}
-                 </p>
+              {/* Breakdown de valores */}
+              <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Valor do card:</span>
+                  <span className="font-medium">R$ {((selectedCard?.value || 1000) / 100).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Taxa de processamento:</span>
+                  <span className="font-medium">R$ 1,99</span>
+                </div>
+                <div className="border-t pt-2">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold">Total a pagar:</span>
+                    <span className="text-xl font-bold text-primary">
+                      R$ {(((selectedCard?.value || 1000) + 199) / 100).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Disclaimer */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
+                  <div className="flex items-start gap-2">
+                    <div className="w-4 h-4 rounded-full bg-blue-500 flex-shrink-0 mt-0.5 flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">i</span>
+                    </div>
+                    <div className="text-sm text-blue-700">
+                      <p className="font-medium mb-1">Sobre a taxa de processamento:</p>
+                      <p>A taxa de R$ 1,99 é aplicada para cobrir custos operacionais do sistema de pagamento. Apenas o valor do card conta para a meta do evento.</p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-4">

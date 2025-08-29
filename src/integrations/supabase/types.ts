@@ -207,6 +207,8 @@ export type Database = {
           paid_at: string | null
           status: string
           stripe_session_id: string | null
+          total_charged: number | null
+          transaction_fee: number
         }
         Insert: {
           amount: number
@@ -218,6 +220,8 @@ export type Database = {
           paid_at?: string | null
           status?: string
           stripe_session_id?: string | null
+          total_charged?: number | null
+          transaction_fee?: number
         }
         Update: {
           amount?: number
@@ -229,6 +233,8 @@ export type Database = {
           paid_at?: string | null
           status?: string
           stripe_session_id?: string | null
+          total_charged?: number | null
+          transaction_fee?: number
         }
         Relationships: [
           {
