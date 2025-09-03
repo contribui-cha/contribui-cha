@@ -88,6 +88,24 @@ serve(async (req) => {
               if (!cardUpdateError) {
                 updatedCards++;
                 logStep("Card updated to revealed", { cardId: payment.card_id });
+                
+                // Save guest message if it exists
+                if (payment.guest_message && payment.guest_message.trim()) {
+                  const { error: messageError } = await supabaseClient
+                    .from('messages')
+                    .insert({
+                      event_id: payment.event_id,
+                      guest_email: payment.guest_email,
+                      guest_name: payment.guest_name || 'Anônimo',
+                      message: payment.guest_message.trim()
+                    });
+                  
+                  if (!messageError) {
+                    logStep("Guest message saved", { eventId: payment.event_id, guestEmail: payment.guest_email });
+                  } else {
+                    logStep("Error saving guest message", { error: messageError.message });
+                  }
+                }
               } else {
                 logStep("Error updating card", { error: cardUpdateError.message });
               }

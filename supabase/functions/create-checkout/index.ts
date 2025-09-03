@@ -73,7 +73,7 @@ serve(async (req) => {
       });
     } else {
       // Card contribution payment
-      const { card_id, event_id, amount, guest_name, guest_email } = requestBody;
+      const { card_id, event_id, amount, guest_name, guest_email, message } = requestBody;
       
       // Validate amount is positive
       if (amount <= 0) {
@@ -183,7 +183,9 @@ serve(async (req) => {
           total_charged: totalAmountForPayment, // Total amount charged to customer
           guest_email: guest_email || 'guest@example.com',
           stripe_session_id: session.id,
-          status: 'pending'
+          status: 'pending',
+          guest_message: message || null,
+          guest_name: guest_name || 'Anônimo'
         });
 
       if (paymentError) {

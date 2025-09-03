@@ -203,6 +203,8 @@ export type Database = {
           created_at: string
           event_id: number
           guest_email: string
+          guest_message: string | null
+          guest_name: string | null
           id: number
           paid_at: string | null
           status: string
@@ -216,6 +218,8 @@ export type Database = {
           created_at?: string
           event_id: number
           guest_email: string
+          guest_message?: string | null
+          guest_name?: string | null
           id?: number
           paid_at?: string | null
           status?: string
@@ -229,6 +233,8 @@ export type Database = {
           created_at?: string
           event_id?: number
           guest_email?: string
+          guest_message?: string | null
+          guest_name?: string | null
           id?: number
           paid_at?: string | null
           status?: string
@@ -364,6 +370,7 @@ export type Database = {
           id: number
           revealed_at: string
           status: string
+          value: number
         }[]
       }
       get_public_event_by_slug: {
