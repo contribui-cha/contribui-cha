@@ -76,7 +76,9 @@ export type Database = {
           min_value: number
           name: string
           num_cards: number
+          onboarding_completed: boolean | null
           slug: string
+          stripe_account_id: string | null
           theme_color: string | null
           updated_at: string
         }
@@ -91,7 +93,9 @@ export type Database = {
           min_value?: number
           name: string
           num_cards?: number
+          onboarding_completed?: boolean | null
           slug: string
+          stripe_account_id?: string | null
           theme_color?: string | null
           updated_at?: string
         }
@@ -106,7 +110,9 @@ export type Database = {
           min_value?: number
           name?: string
           num_cards?: number
+          onboarding_completed?: boolean | null
           slug?: string
+          stripe_account_id?: string | null
           theme_color?: string | null
           updated_at?: string
         }
@@ -160,6 +166,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      host_stripe_accounts: {
+        Row: {
+          account_type: string | null
+          charges_enabled: boolean | null
+          created_at: string
+          details_submitted: boolean | null
+          host_id: string
+          id: string
+          onboarding_completed: boolean | null
+          onboarding_url: string | null
+          payouts_enabled: boolean | null
+          requirements_due_date: string | null
+          stripe_account_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_type?: string | null
+          charges_enabled?: boolean | null
+          created_at?: string
+          details_submitted?: boolean | null
+          host_id: string
+          id?: string
+          onboarding_completed?: boolean | null
+          onboarding_url?: string | null
+          payouts_enabled?: boolean | null
+          requirements_due_date?: string | null
+          stripe_account_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_type?: string | null
+          charges_enabled?: boolean | null
+          created_at?: string
+          details_submitted?: boolean | null
+          host_id?: string
+          id?: string
+          onboarding_completed?: boolean | null
+          onboarding_url?: string | null
+          payouts_enabled?: boolean | null
+          requirements_due_date?: string | null
+          stripe_account_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       messages: {
         Row: {
