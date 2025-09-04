@@ -80,14 +80,14 @@ serve(async (req) => {
         throw new Error("Invalid amount: must be positive");
       }
 
-      // Transaction fee of R$ 1.99 (199 cents)
+      // Transaction fee of R$ 1.99 (199 cents) - this stays with the platform
       const transactionFee = 199;
       const cardValue = amount;
       const totalCharged = cardValue + transactionFee;
       
       logStep("Payment calculation", { cardValue, transactionFee, totalCharged });
 
-      // Get event details
+      // Get event details including Stripe Connect info
       const { data: event, error: eventError } = await supabaseClient
         .from('events')
         .select('*')
@@ -96,6 +96,31 @@ serve(async (req) => {
 
       if (eventError) throw new Error(`Event not found: ${eventError.message}`);
       logStep("Event found", { eventId: event.id, eventName: event.name });
+
+      // Check if host has active Stripe Connect account
+      let hostStripeAccount = null;
+      if (event.stripe_account_id) {
+        const { data: stripeAccount } = await supabaseClient
+          .from('host_stripe_accounts')
+          .select('*')
+          .eq('stripe_account_id', event.stripe_account_id)
+          .eq('host_id', event.host_id)
+          .maybeSingle();
+
+        if (stripeAccount && stripeAccount.charges_enabled && stripeAccount.onboarding_completed) {
+          hostStripeAccount = stripeAccount;
+          logStep("Host has active Stripe Connect account", { 
+            accountId: stripeAccount.stripe_account_id,
+            charges_enabled: stripeAccount.charges_enabled 
+          });
+        } else {
+          logStep("Host Stripe account not ready for charges", { 
+            stripeAccount: stripeAccount || "not found" 
+          });
+        }
+      } else {
+        logStep("Event has no Stripe Connect account configured");
+      }
 
       // Get card details with improved error handling
       let card, cardError;
@@ -138,11 +163,12 @@ serve(async (req) => {
       if (updateError) throw new Error(`Failed to reserve card: ${updateError.message}`);
       logStep("Card reserved", { cardId: card_id });
 
-      // Create checkout session with total amount (card value + transaction fee)
+      // Create checkout session with Stripe Connect transfer if host account is active
       const cardValueForPayment = card.value || event.min_value;
       const totalAmountForPayment = cardValueForPayment + transactionFee;
       
-      const session = await stripe.checkout.sessions.create({
+      // Prepare checkout session configuration
+      const checkoutConfig = {
         customer_email: guest_email || 'guest@example.com',
         line_items: [
           {
@@ -157,7 +183,7 @@ serve(async (req) => {
             quantity: 1,
           },
         ],
-        mode: "payment",
+        mode: "payment" as const,
         success_url: `${req.headers.get("origin")}/events/${event.slug}/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${req.headers.get("origin")}/events/${event.slug}`,
         metadata: {
@@ -168,7 +194,35 @@ serve(async (req) => {
           transaction_fee: transactionFee.toString(),
           total_charged: totalAmountForPayment.toString()
         }
-      });
+      };
+
+      // Add Stripe Connect transfer data if host has active account
+      if (hostStripeAccount) {
+        // Use transfer_data to send card value to host account
+        // Platform keeps the transaction fee (R$ 1.99) automatically
+        checkoutConfig.payment_intent_data = {
+          application_fee_amount: transactionFee, // R$ 1.99 stays with platform
+          transfer_data: {
+            destination: hostStripeAccount.stripe_account_id, // Card value goes to host
+            amount: cardValueForPayment // Only the card value, not the fee
+          }
+        };
+
+        logStep("Stripe Connect transfer configured", {
+          hostAccount: hostStripeAccount.stripe_account_id,
+          cardValue: cardValueForPayment,
+          platformFee: transactionFee,
+          totalCharged: totalAmountForPayment
+        });
+      } else {
+        // If no Stripe Connect account, entire amount stays with platform
+        logStep("No Stripe Connect - payment stays with platform", {
+          totalAmount: totalAmountForPayment,
+          reason: "Host has no active Stripe Connect account"
+        });
+      }
+
+      const session = await stripe.checkout.sessions.create(checkoutConfig);
 
       logStep("Checkout session created", { sessionId: session.id });
 
